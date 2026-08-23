@@ -1,0 +1,806 @@
+[
+  {
+    "file": "sampleinvoice4.pdf",
+    "seconds": 119.7,
+    "issues": [
+      "missing invoice.number",
+      "missing totals.total_amount"
+    ],
+    "data": {
+      "supplier": {
+        "name": "ANS QUALITY METROLOGY SERVICES LLP",
+        "current_address": "No. 104, Vinayaka Layout, 2nd Stage, Vijayanagar, Bengaluru - 560 040.",
+        "billing_address": "No. 104, Vinayaka Layout, 2nd Stage, Vijayanagar, Bengaluru - 560 040.",
+        "billing_state": "Karnataka",
+        "gstin": "29ACIFA1230C1ZY",
+        "pan": "ACIFA1230C",
+        "contact_person": "",
+        "phone": "080 23204493",
+        "email": "nagendra.qpi@gmail.com"
+      },
+      "bank": {
+        "account_number": "50200110586112",
+        "account_type": "",
+        "ifsc": "HDFC0004895"
+      },
+      "invoice": {
+        "number": "",
+        "date": "25-05-2026",
+        "due_date": "",
+        "irn": ""
+      },
+      "totals": {
+        "base_amount": 10240.0,
+        "tax_amount": 0.0,
+        "total_amount": 0.0
+      },
+      "line_items": [
+        {
+          "description": "YOURDCNO:4297 DATE : 21-05-2026",
+          "quantity": 0,
+          "unit_price": 0,
+          "total": 0
+        },
+        {
+          "description": "THREAD RING GAUGE",
+          "quantity": 0.0,
+          "unit_price": 0.0,
+          "total": 1140.0
+        },
+        {
+          "description": "THREAD PLUG GAUGE",
+          "quantity": 0.0,
+          "unit_price": 0.0,
+          "total": 8800.0
+        },
+        {
+          "description": "PLAIN PLUG GAUGE",
+          "quantity": 0.0,
+          "unit_price": 0.0,
+          "total": 300.0
+        }
+      ],
+      "tax_lines": [],
+      "ocr_confidence": 0.969,
+      "warnings": []
+    }
+  },
+  {
+    "file": "sampleinvoice5.pdf",
+    "seconds": 310.4,
+    "issues": [],
+    "data": {
+      "supplier": {
+        "name": "ARKKAYS BRIGHT STEEL PVT.LTD.",
+        "current_address": "Fac. : B-73, Sipcot Industrial Park, Irrungattukottai,, Sriperumbudur, Kancheepuram District, 602117",
+        "billing_address": "Fac. : B-73, Sipcot Industrial Park, Irrungattukottai,, Sriperumbudur, Kancheepuram District, 602117",
+        "billing_state": "Tamil Nadu",
+        "gstin": "33ABECA6961A1Z1",
+        "pan": "ABECA6961A",
+        "contact_person": "",
+        "phone": "044 67128744",
+        "email": ""
+      },
+      "bank": {
+        "account_number": "57500001945630",
+        "account_type": "Current",
+        "ifsc": "HDFC0001097"
+      },
+      "invoice": {
+        "number": "200001350",
+        "date": "22.05.2026",
+        "due_date": "06.07.2026",
+        "irn": "b8596af40d521ddafb551b69f35c19f9807dd58f4354f9e17e02379a1d4960e3"
+      },
+      "totals": {
+        "base_amount": 289336.32,
+        "tax_amount": 52080.54,
+        "total_amount": 341417.0
+      },
+      "line_items": [
+        {
+          "description": "EN1AL 8.00MM A/F DR BAR/5107464080",
+          "quantity": 2944.0,
+          "unit_price": 98.28,
+          "total": 289336.32
+        }
+      ],
+      "tax_lines": [
+        {
+          "rate": 18.0,
+          "base": 289336.33,
+          "amount": 52080.54
+        }
+      ],
+      "ocr_confidence": 0.975,
+      "warnings": []
+    }
+  },
+  {
+    "file": "sampleinvoice6.pdf",
+    "seconds": 83.8,
+    "issues": [
+      "missing totals.total_amount"
+    ],
+    "data": {
+      "supplier": {
+        "name": "SOVATEC",
+        "current_address": "SITE NO. 374 FACTORY SHED NO.1,, SOVATEO SOMPURA INDUSTRIAL AREA, 1ST STAGE,, KIADB SUBLAYOUT, DOBBASPET, NELAMANGALA TALUK,E, BANGALORE RURAL DISTRICTE",
+        "billing_address": "SITE NO. 374 FACTORY SHED NO.1,, SOVATEO SOMPURA INDUSTRIAL AREA, 1ST STAGE,, KIADB SUBLAYOUT, DOBBASPET, NELAMANGALA TALUK,E, BANGALORE RURAL DISTRICTE",
+        "billing_state": "Karnataka",
+        "gstin": "29AEFFS9940A1ZU",
+        "pan": "AEFFS9940A",
+        "contact_person": "",
+        "phone": "8867989317",
+        "email": "contact@sovatec.co.in"
+      },
+      "bank": {
+        "account_number": "1251002100022448",
+        "account_type": "",
+        "ifsc": "PUNB0125100"
+      },
+      "invoice": {
+        "number": "SV-IN-26-27/0576",
+        "date": "29/05/2026",
+        "due_date": "",
+        "irn": ""
+      },
+      "totals": {
+        "base_amount": 3540.0,
+        "tax_amount": 0.0,
+        "total_amount": 0.0
+      },
+      "line_items": [
+        {
+          "description": "1F921BUFFER SLEEVE OK PARTS 7GIOHO",
+          "quantity": 2950.0,
+          "unit_price": 0.0,
+          "total": 18.0
+        },
+        {
+          "description": "Narration",
+          "quantity": 0.0,
+          "unit_price": 0.0,
+          "total": 3540.0
+        }
+      ],
+      "tax_lines": [],
+      "ocr_confidence": 0.972,
+      "warnings": []
+    }
+  },
+  {
+    "file": "sampleinvoice7.pdf",
+    "seconds": 129.3,
+    "issues": [],
+    "data": {
+      "supplier": {
+        "name": "HANUMAN METAL FINISHERS",
+        "current_address": "#C-133,2nd \"B\" Main Road,2nd Stage,Peenya Industrial Area,Bangalore - 560058., Ph08028367523,Emahanumanmetal@gmai.com",
+        "billing_address": "#C-133,2nd \"B\" Main Road,2nd Stage,Peenya Industrial Area,Bangalore - 560058., Ph08028367523,Emahanumanmetal@gmai.com",
+        "billing_state": "Karnataka",
+        "gstin": "29ABBPN5374N1Z1",
+        "pan": "ABBPN5374N",
+        "contact_person": "",
+        "phone": "08028367523",
+        "email": "Emahanumanmetal@gmai.com"
+      },
+      "bank": {
+        "account_number": "89420400000010",
+        "account_type": "Current",
+        "ifsc": ""
+      },
+      "invoice": {
+        "number": "1060/26-27",
+        "date": "30/05/2026",
+        "due_date": "",
+        "irn": ""
+      },
+      "totals": {
+        "base_amount": 2688.0,
+        "tax_amount": 483.84,
+        "total_amount": 3172.0
+      },
+      "line_items": [
+        {
+          "description": "Labour Jobwork Services",
+          "quantity": 0,
+          "unit_price": 0,
+          "total": 0
+        },
+        {
+          "description": "1HOUSING 468 .: Your Ref. DC & (Qty) -4288(19.8) 7GI052",
+          "quantity": 19.8,
+          "unit_price": 35.0,
+          "total": 693.0
+        },
+        {
+          "description": "2|INLET UNION SCREW 020 . : Your Ref. DC & (Qty) :- 4335(25) GFos3",
+          "quantity": 25.0,
+          "unit_price": 35.0,
+          "total": 875.0
+        },
+        {
+          "description": "3HOUSING 488.Your Ref.DC&Qty -4358(32) G1054 3ES pu",
+          "quantity": 2416.0,
+          "unit_price": 35.0,
+          "total": 1120.0
+        }
+      ],
+      "tax_lines": [
+        {
+          "rate": 9.0,
+          "base": 2688.0,
+          "amount": 241.92
+        },
+        {
+          "rate": 9.0,
+          "base": 2688.0,
+          "amount": 241.92
+        }
+      ],
+      "ocr_confidence": 0.941,
+      "warnings": []
+    }
+  },
+  {
+    "file": "sampleinvoice8.pdf",
+    "seconds": 84.0,
+    "issues": [
+      "missing line_items",
+      "missing totals.total_amount"
+    ],
+    "data": {
+      "supplier": {
+        "name": "E-Way Bill Date : 22/5/2026 y Bill No.861690221762 Vehick / Regn. No.: TRnpRters! Mode of Transport CGST/(nWord) Words",
+        "current_address": "",
+        "billing_address": "",
+        "billing_state": "Karnataka",
+        "gstin": "29AADCD1594J1ZC",
+        "pan": "AADCD1594J",
+        "contact_person": "",
+        "phone": "",
+        "email": ""
+      },
+      "bank": {
+        "account_number": "",
+        "account_type": "",
+        "ifsc": ""
+      },
+      "invoice": {
+        "number": "861690221762",
+        "date": "22/5/2026",
+        "due_date": "",
+        "irn": ""
+      },
+      "totals": {
+        "base_amount": 15342.02,
+        "tax_amount": 0.0,
+        "total_amount": 0.0
+      },
+      "line_items": [],
+      "tax_lines": [],
+      "ocr_confidence": 0.935,
+      "warnings": []
+    }
+  },
+  {
+    "file": "sampleinvoice9.pdf",
+    "seconds": 89.3,
+    "issues": [],
+    "data": {
+      "supplier": {
+        "name": "Ack Date 27-May-26",
+        "current_address": "CANARA STEEL CORPORATION, Sri Muneshwara Indl. Estate, Peenya,Bangalore-560058, 08041170381,9880334064",
+        "billing_address": "CANARA STEEL CORPORATION, Sri Muneshwara Indl. Estate, Peenya,Bangalore-560058, 08041170381,9880334064",
+        "billing_state": "Karnataka",
+        "gstin": "29AAAFC8506F1ZL",
+        "pan": "AAAFC8506F",
+        "contact_person": "",
+        "phone": "08041170381",
+        "email": ""
+      },
+      "bank": {
+        "account_number": "6111798041",
+        "account_type": "",
+        "ifsc": "KKBK0008036"
+      },
+      "invoice": {
+        "number": "CB/794",
+        "date": "27-May-26",
+        "due_date": "",
+        "irn": "849e904b54ab074d459c2a45e0d111db9abeeae949f1997578092cde76679a9c"
+      },
+      "totals": {
+        "base_amount": 641.2,
+        "tax_amount": 115.42,
+        "total_amount": 756.62
+      },
+      "line_items": [
+        {
+          "description": "MS BRIGHT BARS (721550) FLATS",
+          "quantity": 7.9,
+          "unit_price": 78.0,
+          "total": 616.2
+        },
+        {
+          "description": "",
+          "quantity": 0.0,
+          "unit_price": 0.0,
+          "total": 25.0
+        }
+      ],
+      "tax_lines": [
+        {
+          "rate": 9.0,
+          "base": 641.22,
+          "amount": 57.71
+        },
+        {
+          "rate": 9.0,
+          "base": 641.22,
+          "amount": 57.71
+        }
+      ],
+      "ocr_confidence": 0.971,
+      "warnings": []
+    }
+  },
+  {
+    "file": "sampleinvoice10.pdf",
+    "seconds": 112.6,
+    "issues": [],
+    "data": {
+      "supplier": {
+        "name": "Ack Date:11-May-26",
+        "current_address": "Omega Bright Steel & Components Pvt. Ltd, OMEGA S.No.604/1B, 604/2B, Mannur, Thodukadu Post, Sriperumbudur Taluk,, Kancheepuram Dist. - 602 105.",
+        "billing_address": "Omega Bright Steel & Components Pvt. Ltd, OMEGA S.No.604/1B, 604/2B, Mannur, Thodukadu Post, Sriperumbudur Taluk,, Kancheepuram Dist. - 602 105.",
+        "billing_state": "Tamil Nadu",
+        "gstin": "33AABCO0293M1ZE",
+        "pan": "AABCO0293M",
+        "contact_person": "",
+        "phone": "",
+        "email": ""
+      },
+      "bank": {
+        "account_number": "",
+        "account_type": "",
+        "ifsc": ""
+      },
+      "invoice": {
+        "number": "522002483769",
+        "date": "11-May-26",
+        "due_date": "",
+        "irn": "52b2fe47528d96b850bbb2431f665a332155436e7027c1ba83361e349edd7d4a"
+      },
+      "totals": {
+        "base_amount": 358071.0,
+        "tax_amount": 27310.5,
+        "total_amount": 385381.5
+      },
+      "line_items": [
+        {
+          "description": "1Free Cutting Bright Bars FG-CH.H.7215.10.00 EN1A L 19.00mm Hex Bundles-01 Part No -5107464 190 Applications-Bosch",
+          "quantity": 700.0,
+          "unit_price": 89.25,
+          "total": 151725.0
+        },
+        {
+          "description": "rod 210526",
+          "quantity": 0.0,
+          "unit_price": 0.0,
+          "total": 27310.5
+        },
+        {
+          "description": "",
+          "quantity": 1700.0,
+          "unit_price": 0.0,
+          "total": 179035.5
+        }
+      ],
+      "tax_lines": [
+        {
+          "rate": 18.0,
+          "base": 151725.0,
+          "amount": 27310.5
+        }
+      ],
+      "ocr_confidence": 0.971,
+      "warnings": []
+    }
+  },
+  {
+    "file": "sampleinvoice11.pdf",
+    "seconds": 93.2,
+    "issues": [],
+    "data": {
+      "supplier": {
+        "name": "Ack Date:11-May-26",
+        "current_address": "Omega Bright Steel & Components Pvt. Ltd, OMEGA S.No.604/1B, 604/2B, Mannur, Thodukadu Post, Sriperumbudur Taluk,, Kancheepuram Dist. - 602 105.",
+        "billing_address": "Omega Bright Steel & Components Pvt. Ltd, OMEGA S.No.604/1B, 604/2B, Mannur, Thodukadu Post, Sriperumbudur Taluk,, Kancheepuram Dist. - 602 105.",
+        "billing_state": "Tamil Nadu",
+        "gstin": "33AABCO0293M1ZE",
+        "pan": "AABCO0293M",
+        "contact_person": "",
+        "phone": "",
+        "email": ""
+      },
+      "bank": {
+        "account_number": "",
+        "account_type": "",
+        "ifsc": ""
+      },
+      "invoice": {
+        "number": "522002483769",
+        "date": "11-May-26",
+        "due_date": "",
+        "irn": "52b2fe47528d96b850bbb2431f665a332155436e7027c1ba83361e349edd7d4a"
+      },
+      "totals": {
+        "base_amount": 358071.0,
+        "tax_amount": 27310.5,
+        "total_amount": 385381.5
+      },
+      "line_items": [
+        {
+          "description": "1Free Cutting Bright Bars FG-CH.H.7215.10.00 EN1A L 19.00mm Hex Bundles-01 Part No -5107464 190 Applications-Bosch",
+          "quantity": 700.0,
+          "unit_price": 89.25,
+          "total": 151725.0
+        },
+        {
+          "description": "rod 210526",
+          "quantity": 0.0,
+          "unit_price": 0.0,
+          "total": 27310.5
+        },
+        {
+          "description": "",
+          "quantity": 1700.0,
+          "unit_price": 0.0,
+          "total": 179035.5
+        }
+      ],
+      "tax_lines": [
+        {
+          "rate": 18.0,
+          "base": 151725.0,
+          "amount": 27310.5
+        }
+      ],
+      "ocr_confidence": 0.971,
+      "warnings": []
+    }
+  },
+  {
+    "file": "sampleinvoice12.pdf",
+    "seconds": 111.8,
+    "issues": [
+      "missing supplier.gstin",
+      "missing line_items",
+      "missing totals.total_amount"
+    ],
+    "data": {
+      "supplier": {
+        "name": "Bangalore Electricity Supply Company Limited",
+        "current_address": "Wholly Owned Government of Karnataka Undertaking), Office of the Asst. Executive Engineer (Ele.), C, O&M Sub-division - N5 SRS GATE, RRNo. Account ID Bill No. Billing Period, N5HT576",
+        "billing_address": "Wholly Owned Government of Karnataka Undertaking), Office of the Asst. Executive Engineer (Ele.), C, O&M Sub-division - N5 SRS GATE, RRNo. Account ID Bill No. Billing Period, N5HT576",
+        "billing_state": "",
+        "gstin": "",
+        "pan": "",
+        "contact_person": "",
+        "phone": "3379388387",
+        "email": ""
+      },
+      "bank": {
+        "account_number": "",
+        "account_type": "",
+        "ifsc": ""
+      },
+      "invoice": {
+        "number": "01-04-2026",
+        "date": "01-04-2026",
+        "due_date": "",
+        "irn": ""
+      },
+      "totals": {
+        "base_amount": 0.0,
+        "tax_amount": 0.0,
+        "total_amount": 0.0
+      },
+      "line_items": [],
+      "tax_lines": [],
+      "ocr_confidence": 0.973,
+      "warnings": []
+    }
+  },
+  {
+    "file": "sampleinvoice13.pdf",
+    "seconds": 61.4,
+    "issues": [
+      "missing line_items"
+    ],
+    "data": {
+      "supplier": {
+        "name": "BALAMBIGA METAL FINISHERS",
+        "current_address": "C-435,C-433 1st Stage Peenya Industrial Estate, Bangalore-560058",
+        "billing_address": "C-435,C-433 1st Stage Peenya Industrial Estate, Bangalore-560058",
+        "billing_state": "Karnataka",
+        "gstin": "29AIZPM4681L1Z3",
+        "pan": "AIZPM4681L",
+        "contact_person": "",
+        "phone": "080-41177982",
+        "email": "accounts@balambiga.com"
+      },
+      "bank": {
+        "account_number": "7363393418",
+        "account_type": "",
+        "ifsc": "IDIB000P081"
+      },
+      "invoice": {
+        "number": "2026-27/10154",
+        "date": "30-May-2026",
+        "due_date": "",
+        "irn": "7d2d94184912382a976d5b07e212f7089bfa66e7ee0d19564f8e9378b1b16397"
+      },
+      "totals": {
+        "base_amount": 0.0,
+        "tax_amount": 0.0,
+        "total_amount": 11328.0
+      },
+      "line_items": [],
+      "tax_lines": [],
+      "ocr_confidence": 0.955,
+      "warnings": []
+    }
+  },
+  {
+    "file": "sampleinvoice14.pdf",
+    "seconds": 95.6,
+    "issues": [
+      "totals mismatch: base + tax != total (check OCR quality)"
+    ],
+    "data": {
+      "supplier": {
+        "name": "Metlok Precoat Services Pvt.Ltd.",
+        "current_address": "Plot No.: 265, A Road No.: 6, Bommasandra Jigani Link Road Industrial Area,Rajapura Villagee, Bonding & Sealing Solutions Bengaluru Karnataka 560105India, Registered Address : Plot No-265 A, ROAD NO.6, Bommasandra Jigani Link Road, Rajapura Village,e, Bengaluru (Bangalore)Rural, Karnataka,560105",
+        "billing_address": "Plot No.: 265, A Road No.: 6, Bommasandra Jigani Link Road Industrial Area,Rajapura Villagee, Bonding & Sealing Solutions Bengaluru Karnataka 560105India, Registered Address : Plot No-265 A, ROAD NO.6, Bommasandra Jigani Link Road, Rajapura Village,e, Bengaluru (Bangalore)Rural, Karnataka,560105",
+        "billing_state": "Karnataka",
+        "gstin": "29AADCM2099M1ZV",
+        "pan": "AADCM2099M",
+        "contact_person": "",
+        "phone": "9972308008",
+        "email": "acctsmgrblr@metlok.in"
+      },
+      "bank": {
+        "account_number": "",
+        "account_type": "",
+        "ifsc": ""
+      },
+      "invoice": {
+        "number": "3KA2627/412",
+        "date": "29-05-2026",
+        "due_date": "13-07-2026",
+        "irn": "99d64f8af4501d13795550ad3e6c4a7cbc2f2615339d6f00689f486b00569f5d"
+      },
+      "totals": {
+        "base_amount": 143146.8,
+        "tax_amount": 12947.44,
+        "total_amount": 84878.0
+      },
+      "line_items": [
+        {
+          "description": "F03111423455010 P80 Pre Applied Adhesive M16X1.5mm InletUnion -P80 Screw(1423455010)",
+          "quantity": 19930.0,
+          "unit_price": 3.17,
+          "total": 63178.1
+        },
+        {
+          "description": "F03112420365008 P80 Pre Applied Adhesive 2 -P80 M18X1.5mm Threaded LOH4 Bush(2420365008)",
+          "quantity": 1030.0,
+          "unit_price": 2.93,
+          "total": 3017.9
+        },
+        {
+          "description": "F03111423455020 -P80 P80 Pre Applied Adhesive M16X1.5mm Inlet Union Screw(1423455020)",
+          "quantity": 1630.0,
+          "unit_price": 3.08,
+          "total": 5020.4
+        },
+        {
+          "description": "",
+          "quantity": 0.0,
+          "unit_price": 0.0,
+          "total": 71216.4
+        },
+        {
+          "description": "",
+          "quantity": 0.0,
+          "unit_price": 0.0,
+          "total": 714.0
+        }
+      ],
+      "tax_lines": [
+        {
+          "rate": 9.0,
+          "base": 71930.22,
+          "amount": 6473.72
+        },
+        {
+          "rate": 9.0,
+          "base": 71930.22,
+          "amount": 6473.72
+        }
+      ],
+      "ocr_confidence": 0.971,
+      "warnings": [
+        "totals mismatch: base + tax != total (check OCR quality)"
+      ]
+    }
+  },
+  {
+    "file": "sampleinvoice15.pdf",
+    "seconds": 50.2,
+    "issues": [
+      "missing totals.total_amount"
+    ],
+    "data": {
+      "supplier": {
+        "name": "ICON PRECISION",
+        "current_address": "Manufacturing & FixtureDesign,Job Work,ViMc Proraming,, #200/2, Channarayappa Building, 4th Block, 11th Cross Peenya 1st stage, SRS Signai BANGALORE-560058",
+        "billing_address": "Manufacturing & FixtureDesign,Job Work,ViMc Proraming,, #200/2, Channarayappa Building, 4th Block, 11th Cross Peenya 1st stage, SRS Signai BANGALORE-560058",
+        "billing_state": "Karnataka",
+        "gstin": "29AHTPU1203D1Z9",
+        "pan": "AHTPU1203D",
+        "contact_person": "",
+        "phone": "7259732162",
+        "email": "iconprecision24@gmail.com"
+      },
+      "bank": {
+        "account_number": "76321010000181",
+        "account_type": "",
+        "ifsc": "UBIN0907634"
+      },
+      "invoice": {
+        "number": "IP-009/26-27",
+        "date": "18 May 2026",
+        "due_date": "09 June 2026",
+        "irn": ""
+      },
+      "totals": {
+        "base_amount": 35800.0,
+        "tax_amount": 0.0,
+        "total_amount": 0.0
+      },
+      "line_items": [
+        {
+          "description": "TTEL 1212 M2 T16",
+          "quantity": 10.0,
+          "unit_price": 1250.0,
+          "total": 12500.0
+        },
+        {
+          "description": "2MM GROOVING INSERT'S",
+          "quantity": 60.0,
+          "unit_price": 140.0,
+          "total": 8400.0
+        },
+        {
+          "description": "MTJNR1216K11",
+          "quantity": 5.0,
+          "unit_price": 1580.0,
+          "total": 7900.0
+        },
+        {
+          "description": "MT 11 CLAMP",
+          "quantity": 20.0,
+          "unit_price": 320.0,
+          "total": 6400.0
+        },
+        {
+          "description": "2mm SPECIAL INSERT'S R0.2",
+          "quantity": 0.0,
+          "unit_price": 0.0,
+          "total": 600.0
+        }
+      ],
+      "tax_lines": [],
+      "ocr_confidence": 0.973,
+      "warnings": []
+    }
+  },
+  {
+    "file": "sampleinvoice16.pdf",
+    "seconds": 57.1,
+    "issues": [
+      "missing supplier.gstin",
+      "missing invoice.number",
+      "missing line_items",
+      "missing totals.total_amount"
+    ],
+    "data": {
+      "supplier": {
+        "name": "E-Way Bill Date : 22/5/2026 Vehice / Regn. No. : Tran porter's N",
+        "current_address": "",
+        "billing_address": "",
+        "billing_state": "",
+        "gstin": "",
+        "pan": "",
+        "contact_person": "",
+        "phone": "",
+        "email": ""
+      },
+      "bank": {
+        "account_number": "",
+        "account_type": "",
+        "ifsc": ""
+      },
+      "invoice": {
+        "number": "",
+        "date": "22/5/2026",
+        "due_date": "",
+        "irn": ""
+      },
+      "totals": {
+        "base_amount": 8.5,
+        "tax_amount": 0.0,
+        "total_amount": 0.0
+      },
+      "line_items": [],
+      "tax_lines": [],
+      "ocr_confidence": 0.936,
+      "warnings": []
+    }
+  },
+  {
+    "file": "sampleinvoice17.pdf",
+    "seconds": 66.6,
+    "issues": [
+      "missing line_items"
+    ],
+    "data": {
+      "supplier": {
+        "name": "SN METAL FINISHERS",
+        "current_address": "#55/18,Machohalli Magadi Road, Bapagarama Post, Dasanapura Hobli,Bangalore 91.",
+        "billing_address": "#55/18,Machohalli Magadi Road, Bapagarama Post, Dasanapura Hobli,Bangalore 91.",
+        "billing_state": "Karnataka",
+        "gstin": "29ADKFS6323H1ZQ",
+        "pan": "ADKFS6323H",
+        "contact_person": "",
+        "phone": "",
+        "email": "snmetalfinishers@gmail.com."
+      },
+      "bank": {
+        "account_number": "37335329088",
+        "account_type": "Current",
+        "ifsc": "SBIN0005198"
+      },
+      "invoice": {
+        "number": "764/26-27",
+        "date": "30/05/2026",
+        "due_date": "",
+        "irn": ""
+      },
+      "totals": {
+        "base_amount": 951.2,
+        "tax_amount": 172.0,
+        "total_amount": 1123.0
+      },
+      "line_items": [],
+      "tax_lines": [
+        {
+          "rate": 9.0,
+          "base": 955.56,
+          "amount": 86.0
+        },
+        {
+          "rate": 9.0,
+          "base": 955.56,
+          "amount": 86.0
+        }
+      ],
+      "ocr_confidence": 0.953,
+      "warnings": []
+    }
+  }
+]

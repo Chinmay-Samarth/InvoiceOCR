@@ -1,0 +1,42 @@
+﻿{
+  "supplier": {
+    "name": "MATHURE METAL WORKS PVT. LTD.",
+    "current_address": "MMW MANUFACTURERS OF BRAZING AND SOLDERING CONSUMABLES, Regd Off: 102-103,SangamShree Samarth Path.Adarsh Colony.Kopri. Thane (E 400603 (India, Factory: 5-13,105-113,A/10, Kripa Industrial Complex.Sonale Village.Bhiwandi. Dist Thane 421302 (India)",
+    "billing_address": "MMW MANUFACTURERS OF BRAZING AND SOLDERING CONSUMABLES, Regd Off: 102-103,SangamShree Samarth Path.Adarsh Colony.Kopri. Thane (E 400603 (India, Factory: 5-13,105-113,A/10, Kripa Industrial Complex.Sonale Village.Bhiwandi. Dist Thane 421302 (India)",
+    "billing_state": "Maharashtra",
+    "gstin": "27AABCM1555E1ZR",
+    "pan": "AABCM1555E",
+    "contact_person": "",
+    "phone": "9920066460",
+    "email": "info@mathuremetalworks.comWebsite"
+  },
+  "bank": {
+    "account_number": "37827016871",
+    "account_type": "",
+    "ifsc": "SBIN0007232"
+  },
+  "invoice": {
+    "number": "SINV-26-27-00557",
+    "date": "30-05-2026",
+    "due_date": "",
+    "irn": "021939aa5ec91e59bdd6176f8716137316a2e8fdaec604221876fd123bf034d9"
+  },
+  "totals": {
+    "base_amount": 126.0,
+    "tax_amount": 847.5,
+    "total_amount": 973.5
+  },
+  "line_items": [
+    {
+      "description": "SILMUX TPASTE",
+      "quantity": 1.0,
+      "unit_price": 700.0,
+      "total": 700.0
+    }
+  ],
+  "tax_lines": [],
+  "ocr_confidence": 0.972,
+  "warnings": [
+    "line item totals do not sum to base amount"
+  ]
+}
