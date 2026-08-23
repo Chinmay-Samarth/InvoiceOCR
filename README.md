@@ -78,6 +78,33 @@ new defaults, expect about **1 minute per invoice** on CPU.
 For concurrent load, run multiple workers: `uvicorn app.main:app --workers 2`
 (each worker loads its own model copy, ~1 GB RAM each).
 
+## Deploy on Render
+
+Render defaults to **Python 3.14**, which cannot install `paddlepaddle`. This
+repo pins **Python 3.10.14** via `.python-version` — you must **commit and
+push** that file to GitHub before redeploying.
+
+**Dashboard settings:**
+
+| Setting | Value |
+|---------|--------|
+| Root Directory | *(leave empty — repo root)* |
+| Build Command | `pip install --upgrade pip && pip install -r requirements.txt` |
+| Start Command | `uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1` |
+
+**Environment variable (add in Render → Environment):**
+
+| Key | Value |
+|-----|--------|
+| `PYTHON_VERSION` | `3.10.14` |
+
+Then: **Manual Deploy → Clear build cache & deploy**.
+
+The build log should show `Using Python version 3.10.14` (not 3.14.3).
+
+**Plan:** use at least **Starter** (512 MB may OOM). Prefer **Standard** (2 GB)
+for PaddleOCR. First boot downloads models (~17 MB) over HTTPS.
+
 ## ERP integration example (Python)
 
 ```python

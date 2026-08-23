@@ -1,0 +1,17 @@
+# Render Blueprint (optional). You can also configure these in the dashboard.
+services:
+  - type: web
+    name: invoice-ocr
+    runtime: python
+    plan: starter
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.14
+      - key: OCR_DPI
+        value: 150
+      - key: OCR_MAX_SIDE
+        value: 2400
+      - key: OCR_MAX_PAGES
+        value: 1
