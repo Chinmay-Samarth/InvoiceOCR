@@ -92,6 +92,14 @@ push** that file to GitHub before redeploying.
 | Build Command | `pip install --upgrade pip && pip install -r requirements.txt` |
 | Start Command | `uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1` |
 
+**Important — avoid 502 on upload:** Render kills HTTP requests after ~100 seconds.
+PaddleOCR often takes longer, so the ERP must use **async jobs**:
+
+1. `POST /parse/async` → `{ "job_id": "..." }` (returns in under 1 s)
+2. `GET /jobs/{job_id}` every few seconds until `status` is `done` or `error`
+
+The das-cnc ERP does this automatically when `INVOICE_OCR_USE_ASYNC=true` (default).
+
 **Environment variable (add in Render → Environment):**
 
 | Key | Value |
