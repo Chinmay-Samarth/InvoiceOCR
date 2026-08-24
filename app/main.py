@@ -58,8 +58,9 @@ class JobStatus(BaseModel):
 
 def _set_job(job_id: str, **fields: Any) -> None:
     with _jobs_lock:
-        job = _jobs.get(job_id) or {}
+        job = _jobs.get(job_id) or {"job_id": job_id}
         job.update(fields)
+        job["job_id"] = job_id
         job["updated_at"] = time.time()
         _jobs[job_id] = job
 
@@ -164,7 +165,6 @@ async def parse_invoice_async(document: UploadFile = File(...)) -> JobAccepted:
     now = time.time()
     _set_job(
         job_id,
-        job_id=job_id,
         status="queued",
         result=None,
         error=None,
