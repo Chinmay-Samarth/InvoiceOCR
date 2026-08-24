@@ -21,7 +21,7 @@ from typing import Any, Dict, Optional
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
-from .config import OCR_CPU_THREADS, OCR_DPI, OCR_MAX_SIDE
+from .config import OCR_CPU_THREADS, OCR_DPI, OCR_LOW_MEMORY, OCR_MAX_SIDE, OCR_VERSION
 from .extractors import extract_all
 from .models import InvoiceResult
 from .ocr_engine import SUPPORTED_IMAGE_EXT, get_ocr, ocr_file
@@ -136,6 +136,8 @@ def health() -> dict:
         "ocr_dpi": OCR_DPI,
         "ocr_max_side": OCR_MAX_SIDE,
         "cpu_threads": OCR_CPU_THREADS,
+        "ocr_version": OCR_VERSION,
+        "low_memory": OCR_LOW_MEMORY,
         "async_jobs": True,
     }
 

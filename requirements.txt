@@ -2,8 +2,8 @@ paddlepaddle==2.6.2
 paddleocr==2.7.3
 PyMuPDF>=1.23
 numpy<2
-opencv-python
+opencv-python-headless
 pydantic>=1.10,<2
 fastapi
-uvicorn
+uvicorn[standard]
 python-multipart

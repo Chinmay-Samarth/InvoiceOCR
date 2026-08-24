@@ -13,7 +13,9 @@ import numpy as np
 
 from .config import (
     OCR_CPU_THREADS,
+    OCR_DET_LIMIT,
     OCR_DPI,
+    OCR_ENABLE_MKLDNN,
     OCR_MAX_PAGES,
     OCR_MAX_SIDE,
     OCR_REC_BATCH_NUM,
@@ -110,7 +112,9 @@ def get_ocr():
                     ocr_version=OCR_VERSION,
                     cpu_threads=OCR_CPU_THREADS,
                     rec_batch_num=OCR_REC_BATCH_NUM,
-                    enable_mkldnn=True,
+                    enable_mkldnn=OCR_ENABLE_MKLDNN,
+                    det_limit_side_len=OCR_DET_LIMIT,
+                    use_mp=False,
                 )
     return _ocr_instance
 
@@ -199,27 +203,36 @@ def ocr_file(
         images = images[:max_pages]
 
     pages: List[Page] = []
-    for idx, img in enumerate(images):
-        img = _limit_image_size(img, max_side)
-        result = ocr.ocr(img, cls=OCR_USE_ANGLE_CLS)
-        words: List[Word] = []
-        if result and result[0]:
-            for box, (text, conf) in result[0]:
-                xs = [p[0] for p in box]
-                ys = [p[1] for p in box]
-                text = text.strip()
-                if not text:
-                    continue
-                words.append(Word(
-                    text=text, conf=float(conf),
-                    x0=min(xs), y0=min(ys), x1=max(xs), y1=max(ys),
-                ))
-        page = Page(
-            number=idx + 1,
-            width=img.shape[1],
-            height=img.shape[0],
-            words=words,
-            lines=_group_lines(words),
-        )
-        pages.append(page)
+    try:
+        for idx, img in enumerate(images):
+            img = _limit_image_size(img, max_side)
+            result = ocr.ocr(img, cls=OCR_USE_ANGLE_CLS)
+            words: List[Word] = []
+            if result and result[0]:
+                for box, (text, conf) in result[0]:
+                    xs = [p[0] for p in box]
+                    ys = [p[1] for p in box]
+                    text = text.strip()
+                    if not text:
+                        continue
+                    words.append(Word(
+                        text=text, conf=float(conf),
+                        x0=min(xs), y0=min(ys), x1=max(xs), y1=max(ys),
+                    ))
+            page = Page(
+                number=idx + 1,
+                width=img.shape[1],
+                height=img.shape[0],
+                words=words,
+                lines=_group_lines(words),
+            )
+            pages.append(page)
+            del img, result
+    finally:
+        images.clear()
+        try:
+            import gc
+            gc.collect()
+        except Exception:
+            pass
     return pages

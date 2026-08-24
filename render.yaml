@@ -1,4 +1,4 @@
-# Render Blueprint (optional). You can also configure these in the dashboard.
+# Render Blueprint (optional). You can also set these in the dashboard.
 services:
   - type: web
     name: invoice-ocr
@@ -9,9 +9,17 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.14
+      - key: OCR_LOW_MEMORY
+        value: "true"
       - key: OCR_DPI
-        value: 150
+        value: "100"
       - key: OCR_MAX_SIDE
-        value: 2400
+        value: "1280"
       - key: OCR_MAX_PAGES
-        value: 1
+        value: "1"
+      - key: OCR_CPU_THREADS
+        value: "1"
+      - key: OCR_REC_BATCH_NUM
+        value: "1"
+      - key: OCR_VERSION
+        value: PP-OCR
