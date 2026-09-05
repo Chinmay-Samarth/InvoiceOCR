@@ -21,5 +21,7 @@ for path in paths:
     if d["warnings"]: issues.extend(d["warnings"])
     print(f"{name}: items={len(d['line_items'])} tax={len(d['tax_lines'])} "
           f"base={d['totals']['base_amount']} tax={d['totals']['tax_amount']} "
+          f"round={d['totals'].get('round_off', 0)} "
           f"total={d['totals']['total_amount']} inv={d['invoice']['number']} "
+          f"kinds={[t.get('kind') for t in d['tax_lines']]} "
           f"{'OK' if not issues else issues}")

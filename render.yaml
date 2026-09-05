@@ -1,25 +1,20 @@
-# Render Blueprint (optional). You can also set these in the dashboard.
+# Optional Render blueprint. Local: ignore this file.
 services:
   - type: web
     name: invoice-ocr
     runtime: python
-    plan: starter
     buildCommand: pip install --upgrade pip && pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.14
       - key: OCR_LOW_MEMORY
-        value: "true"
+        value: "false"
+      - key: OCR_VERSION
+        value: PP-OCRv4
       - key: OCR_DPI
-        value: "100"
+        value: "150"
       - key: OCR_MAX_SIDE
-        value: "1280"
+        value: "2400"
       - key: OCR_MAX_PAGES
         value: "1"
-      - key: OCR_CPU_THREADS
-        value: "1"
-      - key: OCR_REC_BATCH_NUM
-        value: "1"
-      - key: OCR_VERSION
-        value: PP-OCR

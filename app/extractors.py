@@ -165,8 +165,10 @@ def extract_supplier(pages: List[Page], result: InvoiceResult) -> None:
                     sup.pan = m.group(1)
                     break
 
-    # --- name: first meaningful left-side header line
+    # --- name: prefer a company-like line (PVT/LTD/...), skip address fragments
     name_idx = None
+    hinted = None
+    fallback = None
     for i, ln in enumerate(header_lines):
         t = _left_text(ln, page)
         if len(t) < 5 or DOC_NOISE_RE.search(t) or _is_hexish(t):
@@ -177,12 +179,38 @@ def extract_supplier(pages: List[Page], result: InvoiceResult) -> None:
             continue
         if re.fullmatch(r"[\d\s/|.,-]+", t):
             continue
+        if PHONE_RE.search(t) and sum(c.isalpha() for c in t) < 8:
+            continue
         if sum(c.isalpha() for c in t) < 5:
             continue
-        sup.name = _clean_value(re.split(
+        cand = _clean_value(re.split(
             r"\bGSTIN\b|\bGST\b|\bInvoice\b", t, flags=re.IGNORECASE)[0])
-        name_idx = i
-        break
+        if not cand:
+            continue
+        if ADDRESS_FRAG_RE.search(cand) and not COMPANY_HINT_RE.search(cand):
+            continue
+        if COMPANY_HINT_RE.search(cand) and hinted is None:
+            hinted = (i, cand)
+            break
+        if fallback is None:
+            fallback = (i, cand)
+    if hinted:
+        name_idx, sup.name = hinted
+    elif fallback:
+        name_idx, sup.name = fallback
+
+    # GSTIN often sits below the name; if header cut was too aggressive, use page text
+    if not sup.gstin:
+        all_gstins = GSTIN_RE.findall(body_text.upper())
+        if all_gstins:
+            from collections import Counter
+            counts = Counter(all_gstins)
+            singles = [g for g in all_gstins if counts[g] == 1]
+            sup.gstin = singles[0] if singles else all_gstins[0]
+            if sup.gstin:
+                sup.pan = sup.gstin[2:12]
+                if sup.gstin[:2] in STATE_CODES:
+                    sup.billing_state = STATE_CODES[sup.gstin[:2]]
 
     # --- address: left-side header lines after the name, until label lines
     addr_parts: List[str] = []
@@ -191,7 +219,8 @@ def extract_supplier(pages: List[Page], result: InvoiceResult) -> None:
         for ln in header_lines[name_idx + 1:]:
             t = _left_text(ln, page)
             if (not t or HEADER_SKIP_RE.search(t) or DOC_NOISE_RE.search(t)
-                    or _is_hexish(t) or sum(c.isalnum() for c in t) < 5):
+                    or _is_hexish(t) or sum(c.isalnum() for c in t) < 5
+                    or PHONE_RE.search(t) and not re.search(r"\d{1,4}\s+[A-Za-z]", t)):
                 skips += 1
                 if skips >= 2 and addr_parts:
                     break
@@ -283,7 +312,20 @@ INV_NUM_BLACKLIST = {"e-way", "eway", "bill", "dated", "date", "no", "and",
                      "value", "way", "state", "code", "party", "gstin"}
 
 SUPPLIER_NAME_SKIP_RE = re.compile(
-    r"^Ack\s*Date|E-Way\s*Bill|Bill\s*Date|Original|Duplicate|Recipient",
+    r"^Ack\s*Date|E-Way\s*Bill|Bill\s*Date|Original|Duplicate|Recipient|"
+    r"phone|tel\b|mobile|email|website|state\s*code",
+    re.IGNORECASE,
+)
+COMPANY_HINT_RE = re.compile(
+    r"pvt|ltd|limited|llp|llc|\binc\b|company|enterprises|works|"
+    r"industries|metals|aluminium|steel|finisher|precision|services|"
+    r"traders|corporation|\bco\b",
+    re.IGNORECASE,
+)
+ADDRESS_FRAG_RE = re.compile(
+    r"district|kanchee|sriperum|layout|cross|phase|village|road|nagar|"
+    r"street|fac\.|factory|sipcot|peenya|industrial|park\b|colony|"
+    r"bangalore|bengaluru|chennai|thane|\bpincode\b|\bpin\b",
     re.IGNORECASE,
 )
 
@@ -626,6 +668,18 @@ TOTAL_ANCHORS = [
     r"net\s*amount\s*payable", r"amount\s*payable", r"amount\s*chargeable",
 ]
 
+ROUND_OFF_RE = re.compile(
+    r"round\s*off(?:\s*amount)?|rounded\s*off|rounding|"
+    r"add\s*/?\s*less\s*:\s*round|r\s*/?\s*off|r\.?\s*off",
+    re.IGNORECASE,
+)
+# Signed amount near round-off: -0.20, (0.20), 0.03, Less 0.20
+SIGNED_AMOUNT_RE = re.compile(
+    r"(?<![\d.])(?:Less\s+)?(?:\((?P<paren>\d+(?:\.\d+)?)\)|"
+    r"(?P<signed>-?\d+(?:\.\d+)?))(?!\d)",
+    re.IGNORECASE,
+)
+
 
 def _amount_on_line(ln: Line) -> Optional[float]:
     best = None
@@ -634,6 +688,47 @@ def _amount_on_line(ln: Line) -> Optional[float]:
         if vals:
             best = vals[-1]
     return best
+
+
+def _signed_amount_in(text: str) -> Optional[float]:
+    """Parse a round-off amount; supports negatives and parentheses."""
+    best = None
+    for m in SIGNED_AMOUNT_RE.finditer(text):
+        if m.group("paren"):
+            val = -(parse_amount(m.group("paren")) or 0.0)
+        else:
+            raw = m.group("signed")
+            val = parse_amount(raw) if raw else None
+            if val is None:
+                continue
+            if re.search(r"\bless\b", text[:m.start()], re.IGNORECASE) and val > 0:
+                val = -val
+        if abs(val) <= 5.0:  # round-off is almost always paisa-scale
+            best = val
+    return best
+
+
+def _extract_round_off(lines: List[Line]) -> Optional[float]:
+    """Find an explicitly labeled Round Off amount on the invoice."""
+    for i, ln in enumerate(lines):
+        if not ROUND_OFF_RE.search(ln.text):
+            continue
+        # Prefer amount on the same line (often "Round Off -0.20")
+        amt = _signed_amount_in(ln.text)
+        if amt is not None:
+            return round(amt, 2)
+        # Sometimes OCR puts the amount on the next line
+        if i + 1 < len(lines):
+            amt = _signed_amount_in(lines[i + 1].text)
+            if amt is not None:
+                return round(amt, 2)
+            # fallback: unsigned amount on next line when label says Less
+            plain = _amount_on_line(lines[i + 1])
+            if plain is not None and plain <= 5.0:
+                if re.search(r"\bless\b", ln.text, re.IGNORECASE):
+                    return round(-plain, 2)
+                return round(plain, 2)
+    return None
 
 
 def _find_subtotal(lines: List[Line]) -> Optional[float]:
@@ -658,6 +753,57 @@ def _find_subtotal(lines: List[Line]) -> Optional[float]:
                 if amt is not None and amt > 0:
                     return amt
     return None
+
+
+def _clean_tax_kind(raw: str) -> str:
+    k = (raw or "").strip().upper()
+    return k if k in ("CGST", "SGST", "IGST", "UTGST") else ""
+
+
+def _kind_from_text(text: str) -> str:
+    m = re.search(r"\b(IGST|CGST|SGST|UTGST)\b", text or "", re.IGNORECASE)
+    return m.group(1).upper() if m else ""
+
+
+def _infer_missing_tax_kinds(tax_lines: List[TaxLine]) -> None:
+    """Fill blank kinds using rate/pairing heuristics (CGST+SGST vs IGST)."""
+    if not tax_lines:
+        return
+    if all(t.kind for t in tax_lines):
+        return
+
+    unknown = [t for t in tax_lines if not t.kind]
+    if len(tax_lines) == 1 and unknown:
+        rate = tax_lines[0].rate
+        # Half-rates (2.5/6/9/14) are usually CGST/SGST; full rates → IGST
+        if abs(rate - round(rate)) < 0.05 and int(round(rate)) in (2, 3, 6, 9, 14):
+            tax_lines[0].kind = "CGST"
+        else:
+            tax_lines[0].kind = "IGST"
+        return
+
+    # Two (or more) unlabeled lines at the same half-rate → CGST then SGST
+    if len(unknown) >= 2:
+        rates = [round(t.rate, 2) for t in unknown]
+        if abs(rates[0] - rates[1]) < 0.05 and rates[0] <= 14:
+            unknown[0].kind = "CGST"
+            unknown[1].kind = "SGST"
+            for t in unknown[2:]:
+                if not t.kind:
+                    t.kind = "SGST" if abs(t.rate - rates[0]) < 0.05 else "IGST"
+            return
+
+    for t in unknown:
+        if t.kind:
+            continue
+        if t.rate <= 14 and abs(t.rate - round(t.rate)) < 0.05 and int(round(t.rate)) in (2, 3, 6, 9, 14):
+            # Prefer CGST if no CGST yet, else SGST
+            if not any(x.kind == "CGST" for x in tax_lines):
+                t.kind = "CGST"
+            else:
+                t.kind = "SGST"
+        else:
+            t.kind = "IGST"
 
 
 def _extract_label_tax_lines(lines: List[Line]) -> List[TaxLine]:
@@ -701,6 +847,7 @@ def _extract_label_tax_lines(lines: List[Line]) -> List[TaxLine]:
                 if key not in seen:
                     seen.add(key)
                     out.append(TaxLine(
+                        kind=kind,
                         rate=rate, amount=round(amount, 2),
                         base=round(amount * 100.0 / rate, 2),
                     ))
@@ -711,18 +858,13 @@ def _extract_label_tax_lines(lines: List[Line]) -> List[TaxLine]:
 def _extract_hsn_tax_lines(lines: List[Line]) -> List[TaxLine]:
     """Parse HSN summary blocks: HSN | Taxable Amount | IGST 18.0%126.00."""
     header_idx = None
-    tax_kind = "GST"
+    tax_kind = ""
     for i, ln in enumerate(lines):
         if re.search(r"taxable\s*amount", ln.text, re.IGNORECASE) and re.search(
             r"IGST|CGST|SGST|UTGST|HSN", ln.text, re.IGNORECASE
         ):
             header_idx = i
-            if re.search(r"IGST", ln.text, re.IGNORECASE):
-                tax_kind = "IGST"
-            elif re.search(r"CGST", ln.text, re.IGNORECASE):
-                tax_kind = "CGST"
-            elif re.search(r"SGST", ln.text, re.IGNORECASE):
-                tax_kind = "SGST"
+            tax_kind = _kind_from_text(ln.text)
             break
     if header_idx is None:
         return []
@@ -740,13 +882,15 @@ def _extract_hsn_tax_lines(lines: List[Line]) -> List[TaxLine]:
             if n > 28:
                 taxable = n
                 break
+        row_kind = _kind_from_text(ln.text) or tax_kind
         for rate_s, amt_s in glued:
             rate = float(rate_s)
             amount = parse_amount(amt_s) or 0.0
             if 0 < rate <= 28 and amount > 0:
                 base = taxable if taxable else round(amount * 100.0 / rate, 2)
-                tax_lines.append(TaxLine(rate=rate, base=base, amount=amount))
-        _ = tax_kind
+                tax_lines.append(TaxLine(
+                    kind=row_kind, rate=rate, base=base, amount=amount,
+                ))
     return tax_lines
 
 
@@ -780,6 +924,9 @@ def extract_totals_and_tax(pages: List[Page], result: InvoiceResult) -> None:
     total = find_anchor_amount(TOTAL_ANCHORS, min_value=(base or 0.0) * 0.5)
     total_anchored = total is not None
 
+    # Explicit Round Off early so tax inference can use it
+    early_round_off = _extract_round_off(lines) or 0.0
+
     # --- collect tax line candidates: (kind, rate, amount, optional base)
     candidates = []
     for i, ln in enumerate(lines):
@@ -795,15 +942,16 @@ def extract_totals_and_tax(pages: List[Page], result: InvoiceResult) -> None:
             rate = float(m.group(1))
             amt = parse_amount(m.group(2)) or 0.0
             if 0 < rate <= 28 and amt > 0:
-                candidates.append([f"UNK{i}", rate, amt, 0.0])
+                candidates.append([_kind_from_text(ln.text), rate, amt, 0.0])
             continue
-        if re.search(r"Add\s*(?:CGST|SGST|IGST)\s*%", ln.text, re.IGNORECASE):
+        m_add = re.search(r"Add\s*(CGST|SGST|IGST|UTGST)\s*%", ln.text, re.IGNORECASE)
+        if m_add:
             nums = _whole_amounts(ln.text) + amounts_in(ln.text)
             small = [n for n in nums if n <= 28]
             big = [n for n in nums if n > 28]
             if big:
                 rate = small[-1] if small else 0.0
-                candidates.append(["ADD", rate, big[-1], 0.0])
+                candidates.append([m_add.group(1).upper(), rate, big[-1], 0.0])
             continue
         for rate_s, amt_s in PCT_GLUE_RE.findall(ln.text):
             rate = float(rate_s)
@@ -811,7 +959,7 @@ def extract_totals_and_tax(pages: List[Page], result: InvoiceResult) -> None:
             if 0 < rate <= 28 and amt > 0:
                 nums = [a for a in amounts_in(ln.text) if a > 28]
                 base_val = nums[0] if nums else 0.0
-                candidates.append([f"PCT{i}", rate, amt, base_val])
+                candidates.append([_kind_from_text(ln.text), rate, amt, base_val])
 
     # reject implausible amounts (OCR column bleed): at GST rates <= 28%,
     # tax can never exceed ~22% of the invoice total
@@ -835,7 +983,7 @@ def extract_totals_and_tax(pages: List[Page], result: InvoiceResult) -> None:
 
     # --- infer missing tax amounts from rate * base when we know the target
     if base_anchored and total_anchored and base:
-        expected = total - base
+        expected = total - base - early_round_off
         if tax_sum < expected - 1.5:
             for c in candidates:
                 if c[2] == 0.0:
@@ -848,6 +996,7 @@ def extract_totals_and_tax(pages: List[Page], result: InvoiceResult) -> None:
 
     tax_lines = [
         TaxLine(
+            kind=_clean_tax_kind(c[0]),
             rate=c[1],
             amount=round(c[2], 2),
             base=round(c[3], 2) if c[3] else (
@@ -860,31 +1009,45 @@ def extract_totals_and_tax(pages: List[Page], result: InvoiceResult) -> None:
         tax_lines = _extract_label_tax_lines(lines)
     if not tax_lines:
         tax_lines = _extract_hsn_tax_lines(lines)
+    _infer_missing_tax_kinds(tax_lines)
     tax_sum = round(sum(t.amount for t in tax_lines), 2)
 
-    # compute grand total from base + tax when not found on document
-    if not total and base and tax_sum:
-        total = round(base + tax_sum, 2)
+    # Prefer explicit Round Off label; else infer when gap is paisa-scale (≤ ₹1)
+    round_off = early_round_off if early_round_off else None
+    if round_off is None and base is not None and total is not None and tax_sum:
+        inferred = round(total - (base + tax_sum), 2)
+        if abs(inferred) <= 1.0 and abs(inferred) > 0.001:
+            round_off = inferred
+    if round_off is None:
+        round_off = 0.0
 
-    # --- reconcile the three totals
+    # compute grand total from base + tax + round_off when not found on document
+    if not total and base and tax_sum:
+        total = round(base + tax_sum + round_off, 2)
+
+    # --- reconcile totals: base + tax + round_off ≈ total
     if base and total is None and tax_sum:
-        total = round(base + tax_sum, 2)
+        total = round(base + tax_sum + round_off, 2)
     if total and base is None and tax_sum:
-        base = round(total - tax_sum, 2)
+        base = round(total - tax_sum - round_off, 2)
     if base and total and not tax_sum:
-        tax_sum = round(total - base, 2)
+        tax_sum = round(total - base - round_off, 2)
 
     totals.base_amount = round(base or 0.0, 2)
     totals.total_amount = round(total or 0.0, 2)
     totals.tax_amount = round(tax_sum or 0.0, 2)
+    totals.round_off = round(round_off, 2)
     result.tax_lines = tax_lines
 
     if totals.base_amount and totals.total_amount:
-        if abs(totals.base_amount + totals.tax_amount - totals.total_amount) > max(
+        expected = round(
+            totals.base_amount + totals.tax_amount + totals.round_off, 2
+        )
+        if abs(expected - totals.total_amount) > max(
             1.5, 0.01 * totals.total_amount
         ):
             result.warnings.append(
-                "totals mismatch: base + tax != total (check OCR quality)")
+                "totals mismatch: base + tax + round_off != total (check OCR quality)")
     if result.line_items and totals.base_amount:
         s = sum(it.total for it in result.line_items)
         if s and abs(s - totals.base_amount) / totals.base_amount > 0.05:

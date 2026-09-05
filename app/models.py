@@ -31,6 +31,7 @@ class Invoice(BaseModel):
 class Totals(BaseModel):
     base_amount: float = 0
     tax_amount: float = 0
+    round_off: float = 0  # can be negative (e.g. -0.20)
     total_amount: float = 0
 
 
@@ -42,6 +43,7 @@ class LineItem(BaseModel):
 
 
 class TaxLine(BaseModel):
+    kind: str = ""  # CGST | SGST | IGST | UTGST
     rate: float = 0
     base: float = 0
     amount: float = 0
