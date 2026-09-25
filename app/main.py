@@ -14,7 +14,13 @@ from typing import Optional
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 
-from .config import OCR_CPU_THREADS, OCR_DPI, OCR_MAX_SIDE, OCR_VERSION
+from .config import (
+    OCR_CPU_THREADS,
+    OCR_DPI,
+    OCR_ENABLE_MKLDNN,
+    OCR_MAX_SIDE,
+    OCR_VERSION,
+)
 from .extractors import extract_all
 from .models import InvoiceResult
 from .ocr_engine import SUPPORTED_IMAGE_EXT, get_ocr, ocr_file
@@ -75,6 +81,7 @@ def health() -> dict:
         "ocr_max_side": OCR_MAX_SIDE,
         "cpu_threads": OCR_CPU_THREADS,
         "ocr_version": OCR_VERSION,
+        "enable_mkldnn": OCR_ENABLE_MKLDNN,
     }
 
 

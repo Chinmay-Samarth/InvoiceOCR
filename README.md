@@ -1,17 +1,22 @@
 # Invoice OCR API (PaddleOCR)
 
-## Run locally (recommended)
+## Run locally on Windows (recommended)
 
-```bash
-cd "E:\Chinmay_Projects\VS Files\Python Files\InvoiceOCR"
-pip install -r requirements.txt
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
+Double-click `start_ocr_windows.bat`, or from a terminal:
+
+```bat
+cd /d "E:\Chinmay_Projects\VS Files\Python Files\InvoiceOCR"
+start_ocr_windows.bat
 ```
 
-ERP `.env`:
+That starts the stable full-accuracy profile on **port 8080**:
+PP-OCRv4, 150 DPI, 2400 max side, MKLDNN off (avoids Windows ECONNRESET crashes).
+
+ERP `server/.env`:
 
 ```
-INVOICE_OCR_URL=http://127.0.0.1:8000/parse
+INVOICE_OCR_URL=http://127.0.0.1:8080/parse
+INVOICE_OCR_HEALTH_URL=http://127.0.0.1:8080/health
 ```
 
 ## Endpoints
@@ -21,4 +26,4 @@ INVOICE_OCR_URL=http://127.0.0.1:8000/parse
 | GET | `/health` | Liveness |
 | POST | `/parse` | Parse invoice (multipart field: `document`) |
 
-Accuracy defaults: PP-OCRv4, 150 DPI, 2400 px longest side.
+Accuracy defaults: PP-OCRv4, 150 DPI, 2400 px longest side, `OCR_ENABLE_MKLDNN=false` on Windows.

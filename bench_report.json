@@ -1,0 +1,370 @@
+{
+  "ranked": [
+    {
+      "name": "D_v4_full_t1_b1",
+      "env": {
+        "OCR_LOW_MEMORY": "false",
+        "OCR_FAST_MODE": "false",
+        "OCR_ENABLE_MKLDNN": "false",
+        "OCR_VERSION": "PP-OCRv4",
+        "OCR_DPI": "150",
+        "OCR_MAX_SIDE": "2400",
+        "OCR_DET_LIMIT": "960",
+        "OCR_CPU_THREADS": "1",
+        "OCR_REC_BATCH_NUM": "1"
+      },
+      "health": {
+        "status": "ok",
+        "ocr_dpi": 150,
+        "ocr_max_side": 2400,
+        "cpu_threads": 1,
+        "ocr_version": "PP-OCRv4",
+        "enable_mkldnn": false
+      },
+      "samples": [
+        {
+          "file": "sampleinvoice1.pdf",
+          "status": "ok",
+          "http": 200,
+          "seconds": 52.0,
+          "score": 21,
+          "gstin": "29AIZPM4681L1Z3",
+          "invoice_number": "2026-27/10154",
+          "total_amount": 11328.0,
+          "confidence": 0.956
+        },
+        {
+          "file": "sampleinvoice4.pdf",
+          "status": "ok",
+          "http": 200,
+          "seconds": 39.3,
+          "score": 22,
+          "gstin": "29ACIFA1230C1ZY",
+          "invoice_number": "081",
+          "total_amount": 12083.2,
+          "confidence": 0.969
+        },
+        {
+          "file": "salesinvoicesample1.pdf",
+          "status": "ok",
+          "http": 200,
+          "seconds": 34.2,
+          "score": 20,
+          "gstin": "29AADCD1594JIZC",
+          "invoice_number": "INV/2026-27/0004",
+          "total_amount": 1416.0,
+          "confidence": 0.984
+        }
+      ],
+      "crashes": 0,
+      "ok": 3,
+      "total_score": 63,
+      "total_time": 125.51352643966675
+    },
+    {
+      "name": "C_v4_dpi120_side1600_t2_b2",
+      "env": {
+        "OCR_LOW_MEMORY": "false",
+        "OCR_FAST_MODE": "false",
+        "OCR_ENABLE_MKLDNN": "false",
+        "OCR_VERSION": "PP-OCRv4",
+        "OCR_DPI": "120",
+        "OCR_MAX_SIDE": "1600",
+        "OCR_DET_LIMIT": "960",
+        "OCR_CPU_THREADS": "2",
+        "OCR_REC_BATCH_NUM": "2"
+      },
+      "health": {
+        "status": "ok",
+        "ocr_dpi": 120,
+        "ocr_max_side": 1600,
+        "cpu_threads": 2,
+        "ocr_version": "PP-OCRv4",
+        "enable_mkldnn": false
+      },
+      "samples": [
+        {
+          "file": "sampleinvoice1.pdf",
+          "status": "ok",
+          "http": 200,
+          "seconds": 52.4,
+          "score": 21,
+          "gstin": "29AIZPM4681L1Z3",
+          "invoice_number": "2026-27/10154",
+          "total_amount": 11328.0,
+          "confidence": 0.95
+        },
+        {
+          "file": "sampleinvoice4.pdf",
+          "status": "ok",
+          "http": 200,
+          "seconds": 40.2,
+          "score": 22,
+          "gstin": "29ACIFA1230C1ZY",
+          "invoice_number": "081",
+          "total_amount": 12083.2,
+          "confidence": 0.956
+        },
+        {
+          "file": "salesinvoicesample1.pdf",
+          "status": "ok",
+          "http": 200,
+          "seconds": 34.5,
+          "score": 20,
+          "gstin": "29AADCD1594JIZC",
+          "invoice_number": "INV/2026-27/0004",
+          "total_amount": 1416.0,
+          "confidence": 0.984
+        }
+      ],
+      "crashes": 0,
+      "ok": 3,
+      "total_score": 63,
+      "total_time": 127.04240393638611
+    },
+    {
+      "name": "B_v4_side1920_t2_b4",
+      "env": {
+        "OCR_LOW_MEMORY": "false",
+        "OCR_FAST_MODE": "false",
+        "OCR_ENABLE_MKLDNN": "false",
+        "OCR_VERSION": "PP-OCRv4",
+        "OCR_DPI": "150",
+        "OCR_MAX_SIDE": "1920",
+        "OCR_DET_LIMIT": "960",
+        "OCR_CPU_THREADS": "2",
+        "OCR_REC_BATCH_NUM": "4"
+      },
+      "health": {
+        "status": "ok",
+        "ocr_dpi": 150,
+        "ocr_max_side": 1920,
+        "cpu_threads": 2,
+        "ocr_version": "PP-OCRv4",
+        "enable_mkldnn": false
+      },
+      "samples": [
+        {
+          "file": "sampleinvoice1.pdf",
+          "status": "ok",
+          "http": 200,
+          "seconds": 54.7,
+          "score": 21,
+          "gstin": "29AIZPM4681L1Z3",
+          "invoice_number": "2026-27/10154",
+          "total_amount": 11328.0,
+          "confidence": 0.957
+        },
+        {
+          "file": "sampleinvoice4.pdf",
+          "status": "ok",
+          "http": 200,
+          "seconds": 44.2,
+          "score": 22,
+          "gstin": "29ACIFA1230C1ZY",
+          "invoice_number": "081",
+          "total_amount": 12083.2,
+          "confidence": 0.961
+        },
+        {
+          "file": "salesinvoicesample1.pdf",
+          "status": "ok",
+          "http": 200,
+          "seconds": 37.7,
+          "score": 20,
+          "gstin": "29AADCD1594JIZC",
+          "invoice_number": "INV/2026-27/0004",
+          "total_amount": 1416.0,
+          "confidence": 0.984
+        }
+      ],
+      "crashes": 0,
+      "ok": 3,
+      "total_score": 63,
+      "total_time": 136.55520749092102
+    },
+    {
+      "name": "E_v4_dpi150_side1600_t1_b2",
+      "env": {
+        "OCR_LOW_MEMORY": "false",
+        "OCR_FAST_MODE": "false",
+        "OCR_ENABLE_MKLDNN": "false",
+        "OCR_VERSION": "PP-OCRv4",
+        "OCR_DPI": "150",
+        "OCR_MAX_SIDE": "1600",
+        "OCR_DET_LIMIT": "736",
+        "OCR_CPU_THREADS": "1",
+        "OCR_REC_BATCH_NUM": "2"
+      },
+      "health": {
+        "status": "ok",
+        "ocr_dpi": 150,
+        "ocr_max_side": 1600,
+        "cpu_threads": 1,
+        "ocr_version": "PP-OCRv4",
+        "enable_mkldnn": false
+      },
+      "samples": [
+        {
+          "file": "sampleinvoice1.pdf",
+          "status": "ok",
+          "http": 200,
+          "seconds": 51.2,
+          "score": 21,
+          "gstin": "29AIZPM4681L1Z3",
+          "invoice_number": "2026-27/10154",
+          "total_amount": 11328.0,
+          "confidence": 0.963
+        },
+        {
+          "file": "sampleinvoice4.pdf",
+          "status": "ok",
+          "http": 200,
+          "seconds": 49.6,
+          "score": 22,
+          "gstin": "29ACIFA1230C1ZY",
+          "invoice_number": "081",
+          "total_amount": 12083.2,
+          "confidence": 0.965
+        },
+        {
+          "file": "salesinvoicesample1.pdf",
+          "status": "ok",
+          "http": 200,
+          "seconds": 43.6,
+          "score": 20,
+          "gstin": "29AADCD1594JIZC",
+          "invoice_number": "INV/2026-27/0004",
+          "total_amount": 1416.0,
+          "confidence": 0.979
+        }
+      ],
+      "crashes": 0,
+      "ok": 3,
+      "total_score": 63,
+      "total_time": 144.41931676864624
+    },
+    {
+      "name": "A_full_v4_t2_b4",
+      "env": {
+        "OCR_LOW_MEMORY": "false",
+        "OCR_FAST_MODE": "false",
+        "OCR_ENABLE_MKLDNN": "false",
+        "OCR_VERSION": "PP-OCRv4",
+        "OCR_DPI": "150",
+        "OCR_MAX_SIDE": "2400",
+        "OCR_DET_LIMIT": "960",
+        "OCR_CPU_THREADS": "2",
+        "OCR_REC_BATCH_NUM": "4"
+      },
+      "health": {
+        "status": "ok",
+        "ocr_dpi": 150,
+        "ocr_max_side": 2400,
+        "cpu_threads": 2,
+        "ocr_version": "PP-OCRv4",
+        "enable_mkldnn": false
+      },
+      "samples": [
+        {
+          "file": "sampleinvoice1.pdf",
+          "status": "ok",
+          "http": 200,
+          "seconds": 68.0,
+          "score": 21,
+          "gstin": "29AIZPM4681L1Z3",
+          "invoice_number": "2026-27/10154",
+          "total_amount": 11328.0,
+          "confidence": 0.955
+        },
+        {
+          "file": "sampleinvoice4.pdf",
+          "status": "ok",
+          "http": 200,
+          "seconds": 48.1,
+          "score": 22,
+          "gstin": "29ACIFA1230C1ZY",
+          "invoice_number": "081",
+          "total_amount": 12083.2,
+          "confidence": 0.968
+        },
+        {
+          "file": "salesinvoicesample1.pdf",
+          "status": "ok",
+          "http": 200,
+          "seconds": 37.6,
+          "score": 20,
+          "gstin": "29AADCD1594JIZC",
+          "invoice_number": "INV/2026-27/0004",
+          "total_amount": 1416.0,
+          "confidence": 0.984
+        }
+      ],
+      "crashes": 0,
+      "ok": 3,
+      "total_score": 63,
+      "total_time": 153.6608362197876
+    },
+    {
+      "name": "F_v4_dpi100_side1920_t2_b4",
+      "env": {
+        "OCR_LOW_MEMORY": "false",
+        "OCR_FAST_MODE": "false",
+        "OCR_ENABLE_MKLDNN": "false",
+        "OCR_VERSION": "PP-OCRv4",
+        "OCR_DPI": "100",
+        "OCR_MAX_SIDE": "1920",
+        "OCR_DET_LIMIT": "960",
+        "OCR_CPU_THREADS": "2",
+        "OCR_REC_BATCH_NUM": "4"
+      },
+      "health": {
+        "status": "ok",
+        "ocr_dpi": 100,
+        "ocr_max_side": 1920,
+        "cpu_threads": 2,
+        "ocr_version": "PP-OCRv4",
+        "enable_mkldnn": false
+      },
+      "samples": [
+        {
+          "file": "sampleinvoice1.pdf",
+          "status": "ok",
+          "http": 200,
+          "seconds": 72.5,
+          "score": 21,
+          "gstin": "29AIZPM4681L1Z3",
+          "invoice_number": "2026-27/10154",
+          "total_amount": 11328.0,
+          "confidence": 0.96
+        },
+        {
+          "file": "sampleinvoice4.pdf",
+          "status": "ok",
+          "http": 200,
+          "seconds": 51.6,
+          "score": 22,
+          "gstin": "29ACIFA1230C1ZY",
+          "invoice_number": "081",
+          "total_amount": 12083.2,
+          "confidence": 0.957
+        },
+        {
+          "file": "salesinvoicesample1.pdf",
+          "status": "ok",
+          "http": 200,
+          "seconds": 36.7,
+          "score": 20,
+          "gstin": "29AADCD1594JIZC",
+          "invoice_number": "INV/2026-27/0004",
+          "total_amount": 1416.0,
+          "confidence": 0.982
+        }
+      ],
+      "crashes": 0,
+      "ok": 3,
+      "total_score": 63,
+      "total_time": 160.81788682937622
+    }
+  ]
+}
