@@ -15,6 +15,14 @@ services:
       - key: OCR_DPI
         value: "150"
       - key: OCR_MAX_SIDE
-        value: "2400"
-      - key: OCR_MAX_PAGES
+        value: "1600"
+      - key: OCR_DET_LIMIT
+        value: "960"
+      - key: OCR_CPU_THREADS
         value: "1"
+      - key: OCR_REC_BATCH_NUM
+        value: "1"
+      - key: OCR_ENABLE_MKLDNN
+        value: "false"
+      - key: OCR_MAX_PAGES
+        value: "5"

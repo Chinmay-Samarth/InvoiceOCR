@@ -103,6 +103,12 @@ def get_ocr():
     if _ocr_instance is None:
         with _ocr_lock:
             if _ocr_instance is None:
+                from .config import _pin_cpu_threads
+                _pin_cpu_threads()
+                try:
+                    cv2.setNumThreads(OCR_CPU_THREADS)
+                except Exception:
+                    pass
                 from paddleocr import PaddleOCR
                 _ocr_instance = PaddleOCR(
                     use_angle_cls=OCR_USE_ANGLE_CLS,

@@ -23,6 +23,22 @@ IFSC_RE = re.compile(r"\b([A-Z]{4}0[A-Z0-9]{6})\b")
 EMAIL_RE = re.compile(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+")
 PHONE_RE = re.compile(r"(?<!\d)(?:\+91[\s-]?)?(0?\d{10}|0\d{2,4}[\s-]\d{6,8})(?!\d)")
 AMOUNT_RE = re.compile(r"(?<![\d.])(\d{1,3}(?:,\d{2,3})+(?:\.\d+)?|\d+\.\d{1,2})(?!\d)")
+# Longest match first. Indian lakhs (1,51,725.00) must win over a truncated
+# 51,725.00 — that truncation was copied into the line amount and then used
+# to overwrite the printed rate.
+CELL_NUM_RE = re.compile(
+    r"(?<![\d.])("
+    r"\d{1,3}(?:,\d{2})(?:,\d{2,3})+(?:\.\d+)?"
+    r"|\d{1,3}(?:,\d{3})+(?:\.\d+)?"
+    r"|\d+\.\d+"
+    r"|\d+"
+    r")(?!\d)"
+)
+_UNIT_TAIL_RE = re.compile(
+    r"(?:kgs?|nos|pcs|units?|box(?:es)?|bundles?|mtr|qty|rs\.?|inr|%)\.?",
+    re.IGNORECASE,
+)
+_GST_PERCENTS = (2.5, 5.0, 6.0, 9.0, 12.0, 14.0, 18.0, 28.0)
 DATE_RE = re.compile(
     r"\b(\d{1,2}[./-]\d{1,2}[./-]\d{2,4}"
     r"|\d{1,2}[\s./-]?(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\s./,-]{1,2}\d{2,4})\b",
@@ -72,6 +88,115 @@ def amounts_in(text: str) -> List[float]:
     return vals
 
 
+def cell_numbers(text: str) -> List[float]:
+    """Parse numbers from a table cell, including bare integers (qty/rate).
+
+    Do not strip spaces before matching — that glues neighbors like
+    ``0.00 3,540.00`` into ``0.003,540.00`` and corrupts values.
+    """
+    if not text:
+        return []
+    vals = []
+    for m in CELL_NUM_RE.finditer(text):
+        v = parse_amount(m.group(1))
+        if v is not None:
+            vals.append(v)
+    return vals
+
+
+def _is_gst_percent(v: float) -> bool:
+    return 0 < v <= 28.5 and any(abs(v - g) < 0.051 for g in _GST_PERCENTS)
+
+
+def _close_money(a: float, b: float) -> bool:
+    return abs(a - b) <= max(1.0, 0.02 * max(abs(a), abs(b), 1.0))
+
+
+def _token_is_pure_number(text: str) -> bool:
+    """True for a qty/money cell. Part codes and labels (SAC Code: 998898) are not."""
+    raw = (text or "").strip()
+    if not raw or not re.search(r"\d", raw):
+        return False
+    stripped = _UNIT_TAIL_RE.sub("", raw)
+    stripped = stripped.strip(" .,:;/-")
+    return bool(stripped) and re.fullmatch(r"[\d,]+(?:\.\d+)?", stripped) is not None
+
+
+def _peel_hsn_prefix(text: str) -> str:
+    """721510001,700.000 kgs → 1,700.000 kgs (HSN glued onto the quantity)."""
+    compact = text.replace(" ", "")
+    m = re.match(r"(\d+)(,\d{2,3}(?:,\d{2,3})*(?:\.\d+)?)", compact)
+    if not m:
+        return text
+    digits, rest = m.group(1), m.group(2)
+    for hsn_len in (8, 6, 4):
+        if len(digits) <= hsn_len:
+            continue
+        qty_tok = digits[hsn_len:] + rest
+        qty = parse_amount(qty_tok)
+        if qty is not None and 0 < qty < 10_000_000:
+            return qty_tok + compact[m.end():]
+    return text
+
+
+def _explode_qty_rate_amount(text: str):
+    """Split one OCR blob into qty, rate, amount when qty × rate = amount.
+
+    Example: 760429244.80KGS500.00KGS1,22,400.00 → 244.80, 500, 122400.
+    """
+    compact = re.sub(r"\s+", "", text or "")
+    m = re.search(
+        r"(\d{1,3}(?:,\d{2})(?:,\d{2,3})+(?:\.\d+)?"
+        r"|\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+\.\d+)$",
+        compact,
+    )
+    if not m:
+        return None
+    amount = parse_amount(m.group(1))
+    if not amount:
+        return None
+    head = compact[:m.start()]
+    pieces = re.findall(
+        r"(\d+(?:\.\d+)?)(?:kgs?|nos|pcs|unt|units?|mtr)?",
+        head,
+        flags=re.IGNORECASE,
+    )
+    if len(pieces) < 2:
+        return None
+    rate = float(pieces[-1])
+    qty_raw = pieces[-2]
+    if rate <= 0:
+        return None
+    candidates = [float(qty_raw)]
+    if "." in qty_raw:
+        whole, frac = qty_raw.split(".", 1)
+        for n in (8, 6, 4):
+            if len(whole) > n:
+                candidates.append(float(whole[n:] + "." + frac))
+    for qty in candidates:
+        if qty > 0 and _close_money(qty * rate, amount):
+            return qty, rate, amount
+    return None
+
+
+def _values_in_token(text: str, role: str) -> List[float]:
+    """Numbers that belong in a qty/rate/amount cell. Part codes are ignored."""
+    raw = (text or "").strip()
+    if not raw:
+        return []
+    if role == "qty":
+        raw = _peel_hsn_prefix(raw)
+    if not _token_is_pure_number(raw):
+        return []
+    vals = cell_numbers(raw)
+    if role == "qty" and len(vals) > 1:
+        vals = [
+            v for v in vals
+            if not (v >= 1000 and abs(v - round(v)) < 1e-9 and 6 <= len(str(int(v))) <= 8)
+        ] or vals
+    return vals
+
+
 def _whole_amounts(text: str, min_val: float = 100.0) -> List[float]:
     """Integers without decimals (OCR often drops .00), e.g. 3222, 10240."""
     out = []
@@ -84,6 +209,128 @@ def _whole_amounts(text: str, min_val: float = 100.0) -> List[float]:
 
 def _clean_value(s: str) -> str:
     return s.strip().strip(":;|-").strip()
+
+
+# Supplier notes / process annotations glued onto item names by OCR
+_SUPPLIER_NOTE_CUT_RE = re.compile(
+    r"(?i)"
+    r"(?:^|[\s.:;|])(?:"
+    r"your\s*ref\.?"
+    r"|your\s*dc"
+    r"|dc\s*(?:no|number|&|\()"
+    r"|\(\s*qty\s*\)"
+    r"|dc\s*&?\s*\(?\s*qty"
+    r"|ref\.?\s*\(?\s*dc"
+    r"|trivalent|passivation|yellow\s*pass"
+    r"|ok\s*parts"
+    r")"
+)
+
+_SUPPLIER_NOTE_LINE_RE = re.compile(
+    r"(?i)^(?:"
+    r"your\s*ref"
+    r"|your\s*dc"
+    r"|dc\s*&"
+    r"|\(\s*qty\s*\)"
+    r"|trivalent|passivation|yellow"
+    r"|ok\s*parts"
+    r"|being\s+"
+    r"|narration"
+    r")"
+)
+
+# Job-card / lot codes OCR often appends (7GI052, GIOHO, G1054)
+_TRAILING_JOB_CODE_RE = re.compile(
+    r"(?i)\s*(?:\d{0,2}GI\d{2,4}|GIOHO|GFos\d|G\d{3,4})\s*$"
+)
+
+
+def _is_desc_junk_token(tok: str) -> bool:
+    """Trailing OCR garbage glued onto item names (wow, 7GIOHO, pu, etc.)."""
+    t = tok.strip(".,:;|()[]")
+    if not t:
+        return True
+    if re.fullmatch(r"\d{1,4}", t):
+        return False
+    # short all-lowercase OCR crumbs
+    if len(t) <= 3 and t.isalpha() and t.islower():
+        return True
+    # job-card style codes from supplier notes (7GI052, GI052, GIOHO)
+    if re.fullmatch(r"\d{0,2}GI\d{2,4}", t, re.IGNORECASE):
+        return True
+    if re.fullmatch(r"GIOHO|GFos\d", t, re.IGNORECASE):
+        return True
+    # keep real part/drawing codes like MTJNR1216K11, EN1AL
+    if re.match(r"^[A-Z]{2,}\d", t) and not re.match(r"^GI\d", t, re.I):
+        return False
+    if t.isupper() and len(t) >= 4 and not re.search(r"\d", t):
+        return False
+    # mixed junk codes after a readable name (e.g. 7GIOHO, GFos3, 3ES)
+    if len(t) <= 8 and re.search(r"\d", t) and re.search(r"[A-Za-z]", t):
+        letters = sum(c.isalpha() for c in t)
+        digits = sum(c.isdigit() for c in t)
+        if t[0].isdigit() and letters <= 6:
+            return True
+        if letters <= 4 and digits <= 3:
+            return True
+    return False
+
+
+def _is_supplier_note_fragment(text: str) -> bool:
+    """True when a continuation line is only a supplier note, not part of the name."""
+    t = (text or "").strip()
+    if not t:
+        return True
+    if _SUPPLIER_NOTE_LINE_RE.search(t):
+        return True
+    if re.fullmatch(r"[\d().\s\-/:&]+", t):
+        return True
+    if re.fullmatch(r"\d{0,2}GI\d{2,4}", t, re.IGNORECASE):
+        return True
+    # "7GI052 Passivation", "4335(25) Yellow"
+    if re.match(r"(?i)^(?:\d{0,2}GI\d{2,4}|\d{3,}\([\d.]+\))\b", t):
+        return True
+    return False
+
+
+def _clean_item_description(text: str) -> str:
+    """Keep only the proper item name — strip supplier notes and OCR junk.
+
+    Examples removed:
+      Your Ref. (DC) & QTY -4288(19.8)7GI05
+      Your Ref. DC & (Qty) 998873 Trivalent ...
+      OK PARTS / Passivation / Yellow / 7GI052
+    """
+    t = (text or "").strip()
+    if not t:
+        return ""
+    # leading serial: "1 ", "2|", "3.", or fused row index "1HOUSING"
+    # (do not strip sizes/codes like 2MM, 1F921)
+    t = re.sub(r"^\s*\d{1,2}\s*[|.)\-:]\s*", "", t)
+    t = re.sub(r"^\s*\d{1,2}\s+", "", t)
+    t = re.sub(r"^\d(?=[A-Z][a-z]{2,})", "", t)  # 1Housing
+    t = re.sub(r"^\d(?=[A-Z]{4,})", "", t)  # 1HOUSING
+
+    # Hard cut at supplier-note anchors (everything from that point is clutter)
+    m = _SUPPLIER_NOTE_CUT_RE.search(t)
+    if m:
+        t = t[: m.start()].rstrip(" .:;-|/\\")
+
+    # Fused forms without clear spacing: "...488.Your Ref.DC&Qty..."
+    t = re.sub(r"(?i)[.\s]*your\s*ref\.?.*$", "", t)
+    t = re.sub(r"(?i)[.\s]*dc\s*&?\s*\(?\s*qty\)?.*$", "", t)
+    t = re.sub(r"(?i)\s*\bdate\s*[:=].*$", "", t)
+
+    # Trailing DC qty refs and job codes
+    t = re.sub(r"\s*[-:]?\s*\d{3,}\(\d+(?:\.\d+)?\)\s*\d{0,2}GI\d{0,4}\s*$", "", t, flags=re.I)
+    t = re.sub(r"\s+\d{3,}\(\d+(?:\.\d+)?\)\s*$", "", t)
+    t = _TRAILING_JOB_CODE_RE.sub("", t)
+    t = re.sub(r"\s+\d{5,}\s*$", "", t)
+
+    tokens = t.split()
+    while len(tokens) > 1 and _is_desc_junk_token(tokens[-1]):
+        tokens.pop()
+    return " ".join(tokens).strip(" .:;-|/\\")
 
 
 # ---------------------------------------------------------------- helpers
@@ -462,34 +709,96 @@ HEADER_TOKENS = {
     ],
     "hsn": [r"hsn|sac", None],
     "qty": [r"qty|quantity", r"pkgs|\buom\b"],
-    "rate": [r"\brate\b|uomrate|uom\s*rate", r"price"],
-    "amount": [r"amount|taxable", r"value"],
+    "rate": [
+        r"item\s*rate|uomrate|uom\s*rate|\brate\b",
+        r"price|charges",
+    ],
+    "amount": [
+        r"taxable|value",
+        r"\bamount\b",
+    ],
 }
+
+# Words that sit in tax-column bands — avoid treating them as item rate/amount
+_TAX_HEADER_NOISE_RE = re.compile(
+    r"cgst|sgst|igst|utgst|\btax\b|discount",
+    re.IGNORECASE,
+)
 
 
 def _match_header_words(words: List[Word]) -> Optional[dict]:
     found: dict = {}
+    # Prefer left-side rate (item rate) over right-side "Tax Rate"
+    ordered = sorted(words, key=lambda w: w.cx)
     for rank in (0, 1):
-        for w in words:
+        for w in ordered:
             if any(v is w for v in found.values()):
+                continue
+            # Skip tax-band labels when choosing rate/amount columns
+            if _TAX_HEADER_NOISE_RE.search(w.text):
                 continue
             for col, pats in HEADER_TOKENS.items():
                 pat = pats[rank]
                 if col in found or pat is None:
                     continue
                 if re.search(pat, w.text, re.IGNORECASE):
+                    # One OCR token covering both "Rate" and "Taxable Value".
+                    # Split the box so the unit rate stays left of the line amount.
+                    if col == "rate" and re.search(
+                        r"taxable|\bamount\b|\bvalue\b", w.text, re.IGNORECASE
+                    ):
+                        mid = (w.x0 + w.x1) / 2.0
+                        found["rate"] = Word(w.text, w.conf, w.x0, w.y0, mid, w.y1)
+                        if "amount" not in found:
+                            found["amount"] = Word(w.text, w.conf, mid, w.y0, w.x1, w.y1)
+                        break
+                    # "Rate" under CGST/Tax band: skip if neighbors are tax labels
+                    if col in ("rate", "amount"):
+                        nearby = " ".join(
+                            x.text for x in ordered
+                            if abs(x.cx - w.cx) < 120 and x is not w
+                        )
+                        if _TAX_HEADER_NOISE_RE.search(nearby) and col == "rate":
+                            continue
+                    # Item rate is left of taxable value; tax-rate % sits to the right
+                    if col == "rate" and "amount" in found and w.cx > found["amount"].cx:
+                        continue
                     found[col] = w
                     break
-    if "description" in found and ("amount" in found or "rate" in found) and len(found) >= 3:
+    # Two columns are enough when they are the item name and the line amount.
+    # A rate column still needs a third anchor so a random "rate" label is ignored.
+    if "description" in found and "amount" in found and len(found) >= 2:
+        return found
+    if "description" in found and "rate" in found and len(found) >= 3:
         return found
     # "Product" + "Name" on separate tokens
     prod = next((w for w in words if re.fullmatch(r"product", w.text, re.I)), None)
     name_w = next((w for w in words if re.fullmatch(r"name\.?", w.text, re.I)), None)
     if prod and name_w and "description" not in found:
         found["description"] = prod
-    if "description" in found and ("amount" in found or "rate" in found) and len(found) >= 3:
+    if "description" in found and "amount" in found and len(found) >= 2:
+        return found
+    if "description" in found and "rate" in found and len(found) >= 3:
         return found
     return None
+
+
+def _is_header_continuation(ln: Line) -> bool:
+    """A second header line is labels, not a priced item row."""
+    keys = re.findall(
+        r"description|particulars|\bqty\b|quantity|\brate\b|\bamount\b|"
+        r"\bhsn\b|\bsac\b|taxable|\buom\b|\bunit\b|\bvalue\b|\bcharges\b|"
+        r"\bgoods\b|\bitem\b|\bper\b|\bsr\.?\s*no\b",
+        ln.text,
+        re.IGNORECASE,
+    )
+    money = re.findall(r"\d+\.\d{2}|\d{1,3}(?:,\d{2,3})+", ln.text)
+    # A priced row ("144.00 KVA at Rs 350.00 ... 50,400.00") is not a header.
+    if len(money) >= 2:
+        return False
+    if money and not keys:
+        return False
+    return len(keys) >= 1
 
 
 def _find_table_header(lines: List[Line]) -> tuple:
@@ -499,6 +808,8 @@ def _find_table_header(lines: List[Line]) -> tuple:
         for span in (1, 2):
             chunk = lines[i:i + span]
             if len(chunk) > 1 and chunk[-1].cy - chunk[0].cy > 60:
+                break
+            if span > 1 and not _is_header_continuation(chunk[-1]):
                 break
             words: List[Word] = []
             for row in chunk:
@@ -526,11 +837,18 @@ def _is_table_end(ln: Line) -> bool:
     """True when the line-item table ends (summary / tax section begins)."""
     t = ln.text
     if re.search(
-        r"grand\s*total|invoice\s*total|taxable\s*amount|taxable\s*value|"
-        r"amount\s*chargeable|amount\s*before\s*tax|\bcgst\b|\bsgst\b|\bigst\b|"
-        r"\brcm\b|in\s*words?|declaration|precaution",
+        r"grand\s*total|invoice\s*total|total\s*invoice|total\s*basic|"
+        r"taxable\s*amount|taxable\s*value|"
+        r"amount\s*chargeable|amount\s*before\s*tax|net\s*payable|"
+        r"current\s*bill\s*amount|"
+        r"output\s*(cgst|sgst|igst|utgst|tax)|"
+        r"\bcgst\b|\bsgst\b|\bigst\b|"
+        r"\brcm\b|in\s*words?|declaration|precaution|precation|"
+        r"terms\s*(?:and|&)\s*conditions",
         t, re.IGNORECASE,
     ):
+        return True
+    if re.fullmatch(r"[\s.:]*total[\s.:]*", t, re.IGNORECASE):
         return True
     # Pre-tax subtotal row: "Total" with an amount, not a quantity summary
     if re.search(r"\btotal\b", t, re.IGNORECASE) and not re.search(
@@ -543,104 +861,338 @@ def _is_table_end(ln: Line) -> bool:
     return False
 
 
-def extract_line_items(pages: List[Page], result: InvoiceResult) -> None:
-    page = pages[0]
-    lines = page.lines
+_TAX_ROW_RE = re.compile(
+    r"output\s*(igst|cgst|sgst|utgst)|"
+    r"\b(igst|cgst|sgst|utgst)\s*@?\s*\d|"
+    r"tax\s*amount|round\s*off",
+    re.IGNORECASE,
+)
+_SUBTOTAL_ROW_RE = re.compile(
+    r"^(?:basic\s*amount|sub\s*total|taxable\s*(?:amount|value))\b",
+    re.IGNORECASE,
+)
 
-    header, header_idx = _find_table_header(lines)
-    if header is None:
-        return
 
-    col_x = {c: w.cx for c, w in header.items()}
+def _column_bands(col_x: dict, page_width: float, tax_x: Optional[float]):
+    """Half-open x ranges from midpoints so a rate cell cannot swallow the amount."""
+    ordered = sorted(col_x.items(), key=lambda kv: kv[1])
+    bands = []
+    for i, (name, x) in enumerate(ordered):
+        left = 0.0 if i == 0 else (ordered[i - 1][1] + x) / 2.0
+        right = page_width if i + 1 == len(ordered) else (x + ordered[i + 1][1]) / 2.0
+        if name == "amount" and tax_x is not None:
+            right = min(right, tax_x - 4.0)
+        if right > left:
+            bands.append((name, left, right))
+    return bands
 
-    def nearest_col(w: Word) -> str:
-        best, best_d = "description", float("inf")
-        for name, x in col_x.items():
-            d = abs(w.cx - x)
-            if d < best_d:
-                best, best_d = name, d
-        return best
+
+def _tax_zone_x(lines: List[Line], start_idx: int) -> Optional[float]:
+    xs = []
+    for ln in lines[max(0, start_idx - 3):start_idx]:
+        for w in ln.words:
+            if re.search(r"\b(cgst|sgst|igst|utgst)\b", w.text, re.IGNORECASE):
+                xs.append(w.x0)
+            elif re.search(r"\btax\b", w.text, re.IGNORECASE) and not re.search(
+                r"taxable|before\s*tax", w.text, re.IGNORECASE
+            ):
+                xs.append(w.x0)
+    return min(xs) if xs else None
+
+
+def _extract_line_items_from_page(
+    page: Page,
+    lines: List[Line],
+    start_idx: int,
+    col_x: dict,
+) -> List[LineItem]:
+    """Parse item rows on one page using known column centers."""
+
+    tax_x = _tax_zone_x(lines, start_idx)
+    # A header word that landed inside the GST columns is not the line amount.
+    if tax_x is not None and col_x.get("amount", 0) >= tax_x - 4:
+        col_x = {k: v for k, v in col_x.items() if k != "amount"}
+    bands = _column_bands(col_x, page.width, tax_x)
+
+    desc_x = col_x.get("description")
+    leftmost = min(col_x.values()) if col_x else 0.0
+
+    def band_of(w: Word) -> str:
+        # GST rate/amount columns sit to the right of the line amount.
+        if tax_x is not None and w.cx >= tax_x - 4:
+            return "tax"
+        # Far-left block (bank details beside a charges table) is not the item name.
+        if (
+            desc_x is not None
+            and abs(desc_x - leftmost) < 1
+            and w.cx < desc_x - 360
+        ):
+            return "other"
+        for name, left, right in bands:
+            if left <= w.cx < right:
+                return name
+        return "description"
 
     max_gap = max(page.height * 0.08, 400.0)
-    prev_y = lines[header_idx].cy
+    prev_y: Optional[float] = None
     items: List[LineItem] = []
     current: Optional[LineItem] = None
 
-    for ln in lines[header_idx + 1:]:
+    for ln in lines[start_idx:]:
         if _is_table_end(ln):
             break
-        if ln.cy - prev_y > max_gap:
+        if prev_y is not None and ln.cy - prev_y > max_gap:
             break
+        if _SUBTOTAL_ROW_RE.search(ln.text.strip()):
+            continue
+        if _TAX_ROW_RE.search(ln.text) and not re.search(
+            r"description|particulars|goods", ln.text, re.IGNORECASE
+        ):
+            # "OUTPUT IGST @ 18%  27,310.50" is a tax row, not an item.
+            # Stop if the tax section has started; otherwise just skip the row.
+            if re.search(r"output|cgst|sgst|igst", ln.text, re.IGNORECASE):
+                break
+            continue
         # skip handwriting / stamp noise (low recognition confidence)
         confs = [w.conf for w in ln.words]
         if confs and sum(confs) / len(confs) < 0.6:
             continue
 
-        cells = {c: [] for c in list(col_x) + ["description"]}
+        cells = {c: [] for c in list(col_x) + ["description", "tax", "other"]}
         for w in ln.words:
-            cells[nearest_col(w)].append(w)
+            cells[band_of(w)].append(w)
 
-        desc_text = " ".join(w.text for w in cells["description"]).strip()
-        qty_v = amounts_in(" ".join(w.text for w in cells.get("qty", [])))
-        rate_v = amounts_in(" ".join(w.text for w in cells.get("rate", [])))
-        amt_words = cells.get("amount", [])
-        if amt_words and "amount" in col_x:
-            ax = col_x["amount"]
-            margin = page.width * 0.07
-            amt_words = [w for w in amt_words if abs(w.cx - ax) <= margin]
-        amt_v = amounts_in(" ".join(w.text for w in amt_words))
-        row_amounts = amounts_in(ln.text)
+        def _col_vals(role: str) -> List[float]:
+            out: List[float] = []
+            for w in cells.get(role, []):
+                raw = w.text.strip()
+                # ".150" is OCR for 150; keep 0.150 as well and let reconciliation choose.
+                if re.fullmatch(r"\.\d{2,4}", raw):
+                    out.extend(_values_in_token(raw.lstrip("."), role))
+                    out.extend(_values_in_token("0" + raw, role))
+                    continue
+                out.extend(_values_in_token(w.text, role))
+            return out
 
-        qty = qty_v[0] if qty_v else 0.0
-        if not qty:
-            qty_text = " ".join(w.text for w in cells.get("qty", []))
-            m = re.search(
-                r"(\d+(?:\.\d+)?)\s*(?:kgs?|nos|unt|pcs|units?|bundles?|box)\b",
-                qty_text, re.IGNORECASE,
-            )
-            if m:
-                qty = float(m.group(1))
-        price = rate_v[0] if rate_v else 0.0
-        total = amt_v[-1] if amt_v else 0.0
+        qty_v = _col_vals("qty")
+        rate_v = _col_vals("rate")
+        amt_v = [a for a in _col_vals("amount") if a > 0]
+        # GST % sitting in the amount band is not the line amount when a real
+        # amount is also there (this was the "rate saved as amount" bug).
+        if any(not _is_gst_percent(a) and a > 28 for a in amt_v):
+            amt_v = [a for a in amt_v if not _is_gst_percent(a)]
 
-        # column-merge fallbacks
-        if not total and len(rate_v) >= 2:
-            price, total = rate_v[0], rate_v[-1]
-        if not total and not price and len(row_amounts) >= 2 and desc_text:
-            total = row_amounts[-1]
-            if row_amounts[-2] < total:
-                price = row_amounts[-2]
+        exploded = None
+        for w in ln.words:
+            exploded = _explode_qty_rate_amount(w.text)
+            if exploded:
+                break
+
+        if exploded:
+            qty, price, total = exploded
+            rate_from_col = amt_from_col = True
+        else:
+            price = 0.0
+            total = 0.0
+            qty = 0.0
+            rate_from_col = bool(rate_v)
+            amt_from_col = bool(amt_v)
+
+            if len(rate_v) == 1:
+                price = rate_v[0]
+            elif rate_v:
+                non_gst = [r for r in rate_v if not _is_gst_percent(r)]
+                price = non_gst[0] if non_gst else rate_v[0]
+
+            if len(amt_v) == 1:
+                total = amt_v[0]
+            elif amt_v:
+                total = max(amt_v)
+
+            if qty_v:
+                if len(qty_v) == 1:
+                    qty = qty_v[0]
+                elif price and (total or len(rate_v) > 1):
+                    targets = amt_v or rate_v
+                    qty = min(
+                        qty_v,
+                        key=lambda q: min(abs(q * price - a) for a in targets) if q else 1e18,
+                    )
+                else:
+                    qty = max(qty_v)
+
+            # Rate column also held the taxable value ("Rate / Taxable Value"
+            # read as one header). qty × unit rate = that larger number.
+            # Using the taxable value as the rate is the crash-sized error.
+            if not amt_v and qty and len(rate_v) >= 2:
+                hit = None
+                for r in sorted(rate_v):
+                    for a in rate_v:
+                        if a > r and _close_money(qty * r, a):
+                            hit = (r, a)
+                            break
+                    if hit:
+                        break
+                if hit:
+                    price, total = hit
+                    amt_from_col = True
+                elif qty > 1:
+                    smaller, larger = min(rate_v), max(rate_v)
+                    if larger > smaller * 2 and smaller < larger:
+                        price, total = smaller, larger
+                        amt_from_col = True
+
+            # If several rates/amounts were read, prefer the pair that
+            # multiplies with qty. Never replace a single printed rate with
+            # amount/qty — that is what turned 89.25 into 73.89 and 140 into 168.
+            if qty and len(rate_v) > 1 and amt_v:
+                price = min(rate_v, key=lambda r: min(abs(qty * r - a) for a in amt_v))
+            if qty and price and len(amt_v) > 1:
+                best = min(amt_v, key=lambda a: abs(qty * price - a))
+                if _close_money(qty * price, best) or not _is_gst_percent(best):
+                    total = best
+
+            if not qty and price and total and price > 0:
+                q = total / price
+                if 0 < q < 10_000_000:
+                    qty = round(q, 3)
+            # Invent a rate only when the rate column was empty.
+            if qty and total and not rate_from_col and qty > 0:
+                price = round(total / qty, 4)
+            if qty and price and not amt_from_col:
+                total = round(qty * price, 2)
+            # Amount cell repeated the unit rate (qty > 1 so they cannot be equal).
+            if (
+                qty > 1 and price and total and rate_from_col
+                and _close_money(price, total)
+                and not _close_money(qty * price, total)
+            ):
+                total = round(qty * price, 2)
+            # Amount cell held the GST % (18) instead of the taxable value.
+            if (
+                qty and price and total and rate_from_col
+                and _is_gst_percent(total)
+                and qty * price > max(28.0, total * 4)
+            ):
+                total = round(qty * price, 2)
+
+        desc_text = " ".join(w.text for w in cells.get("description", [])).strip()
+        desc_text = _clean_item_description(desc_text)
+        # Short labels like "Handling Charges" can land in HSN column — recover text
+        if not desc_text and (total or price):
+            skip_cols = set()
+            for col in ("qty", "rate", "amount"):
+                if col in col_x:
+                    skip_cols.add(col)
+            recovered = []
+            for w in ln.words:
+                col = band_of(w)
+                if col in skip_cols or col == "tax":
+                    continue
+                if cell_numbers(w.text) and not re.search(r"[A-Za-z]{2,}", w.text):
+                    continue
+                recovered.append(w.text)
+            desc_text = _clean_item_description(" ".join(recovered))
 
         if total or price:
-            desc_text = re.sub(r"^\s*\d{1,2}\s+", "", desc_text)
-            if META_ROW_RE.search(desc_text) and total < 100:
+            if not desc_text:
+                continue
+            if META_ROW_RE.search(desc_text):
+                continue
+            if re.search(r"^(?:your\s*dc|narration)\b", desc_text, re.IGNORECASE):
+                continue
+            # Category header rows with no economics (e.g. "Labour Jobwork Services")
+            if (
+                re.search(r"^labour\s*jobwork\s*services\b", desc_text, re.IGNORECASE)
+                and not total and not price
+            ):
                 continue
             if total == 0 and price == 0:
                 continue
-            if re.search(r"^your\s*dc|narration\b", desc_text, re.IGNORECASE):
-                continue
-            if not qty and price and total:
-                q = total / price
-                if 0 < q < 10_000_000 and abs(q - round(q, 3)) < 1e-6:
-                    qty = round(q, 3)
-            current = LineItem(description=desc_text, quantity=qty,
-                               unit_price=price, total=total)
+            current = LineItem(
+                description=desc_text,
+                quantity=qty,
+                unit_price=price,
+                total=total,
+            )
             items.append(current)
             prev_y = ln.cy
         elif desc_text and current is not None and len(desc_text) > 2:
-            current.description = (current.description + " " + desc_text).strip()
+            # Never merge supplier notes / process annotations into the item name
+            if META_ROW_RE.search(desc_text) or _is_supplier_note_fragment(desc_text):
+                continue
+            cleaned = _clean_item_description(desc_text)
+            if not cleaned or len(cleaned) <= 2 or _is_supplier_note_fragment(cleaned):
+                continue
+            current.description = _clean_item_description(
+                (current.description + " " + cleaned).strip()
+            )
             prev_y = ln.cy
-        elif desc_text and current is None and len(desc_text) > 4:
-            current = LineItem(description=re.sub(r"^\s*\d{1,2}\s+", "", desc_text))
-            items.append(current)
-            prev_y = ln.cy
+        # Do not create empty "description-only" placeholder rows
 
-    items = [
-        it for it in items
-        if not re.search(r"\b(CGST|SGST|IGST|OUTPUT|TOTAL)\b", it.description,
-                         re.IGNORECASE)
-    ]
-    result.line_items = [it for it in items if it.description or it.total]
+    return items
+
+
+def _is_junk_line_item(it: LineItem) -> bool:
+    desc = (it.description or "").strip()
+    if not desc and not it.total:
+        return True
+    if re.search(r"\b(CGST|SGST|IGST|OUTPUT|TOTAL)\b", desc, re.IGNORECASE):
+        return True
+    if META_ROW_RE.search(desc):
+        return True
+    if re.search(r"^(?:your\s*dc|narration)\b", desc, re.IGNORECASE):
+        return True
+    if (
+        re.search(r"^labour\s*jobwork\s*services\b", desc, re.IGNORECASE)
+        and not it.total and not it.quantity and not it.unit_price
+    ):
+        return True
+    # Pure numeric / DC-ref crumbs that became fake rows ("4288(19.8)", "4288(19.8) GI052")
+    if re.fullmatch(r"[\d().\s\-/,]+", desc):
+        return True
+    if re.match(r"^\d{3,}\([\d.]+\)", desc):
+        return True
+    if len(desc) <= 12 and desc.count("(") and re.search(r"\d", desc) and not re.search(r"[A-Za-z]{3,}", desc):
+        return True
+    # OCR-garbled totals rows ("rotal", "tota1")
+    if re.fullmatch(r"(?:rotal|tota[l1]|sub\s*total|total)", desc, re.IGNORECASE):
+        return True
+    # Empty economics (no qty, rate, or amount)
+    if not it.total and not it.quantity and not it.unit_price:
+        return True
+    return False
+
+
+def extract_line_items(pages: List[Page], result: InvoiceResult) -> None:
+    """Collect line items across all OCR pages (continuation tables reuse columns)."""
+    if not pages:
+        return
+
+    items: List[LineItem] = []
+    col_x: Optional[dict] = None
+
+    for page_i, page in enumerate(pages):
+        lines = page.lines
+        header, header_idx = _find_table_header(lines)
+        if header is not None:
+            col_x = {c: w.cx for c, w in header.items()}
+            start_idx = header_idx + 1
+        elif col_x is not None and page_i > 0:
+            # Continuation page with no repeated header — keep prior column map
+            start_idx = 0
+        else:
+            continue
+
+        items.extend(_extract_line_items_from_page(page, lines, start_idx, col_x))
+
+    cleaned: List[LineItem] = []
+    for it in items:
+        it.description = _clean_item_description(it.description)
+        if _is_junk_line_item(it):
+            continue
+        cleaned.append(it)
+    result.line_items = cleaned
 
 
 # ---------------------------------------------------------------- totals & tax
@@ -666,6 +1218,7 @@ TOTAL_ANCHORS = [
     r"grand\s*total", r"bill\s*total", r"invoice\s*total",
     r"total\s*invoice\s*value", r"total\s*amount(?!\s*before)",
     r"net\s*amount\s*payable", r"amount\s*payable", r"amount\s*chargeable",
+    r"current\s*bill\s*amount", r"net\s*payable",
 ]
 
 ROUND_OFF_RE = re.compile(
@@ -684,7 +1237,8 @@ SIGNED_AMOUNT_RE = re.compile(
 def _amount_on_line(ln: Line) -> Optional[float]:
     best = None
     for w in ln.words:
-        vals = amounts_in(w.text)
+        # Include bare integers — many totals OCR without decimals (35800)
+        vals = cell_numbers(w.text)
         if vals:
             best = vals[-1]
     return best
@@ -732,27 +1286,98 @@ def _extract_round_off(lines: List[Line]) -> Optional[float]:
 
 
 def _find_subtotal(lines: List[Line]) -> Optional[float]:
-    """Find the pre-tax subtotal row (Total 825.00), not Grand Total."""
-    for ln in lines:
-        if not re.search(r"\btotal\b", ln.text, re.IGNORECASE):
-            continue
-        if re.search(
-            r"grand|taxable\s*amount|invoice\s*total|chargeable|before\s*tax|"
-            r"\b(kgs?|nos|pcs|units?|bundles?|unt)\b",
-            ln.text, re.IGNORECASE,
-        ):
-            continue
-        amt = _amount_on_line(ln)
-        if amt is not None and amt > 0:
-            return amt
-    for pat in (r"sub\s*total", r"total\s*amount\s*before\s*tax"):
+    """Find the pre-tax subtotal row (Sub Total / Taxable), not Bill/Grand Total."""
+    # Prefer explicit pre-tax labels first (Taxable before Sub Total — Sub Total
+    # is often tax-inclusive on job-work invoices).
+    for pat in (
+        r"taxable\s*(?:amount|value)",
+        r"total\s*taxable",
+        r"total\s*amount\s*before\s*tax",
+        r"sub\s*total",
+    ):
         rx = re.compile(pat, re.IGNORECASE)
         for ln in lines:
             if rx.search(ln.text):
                 amt = _amount_on_line(ln)
                 if amt is not None and amt > 0:
                     return amt
+    for ln in lines:
+        if not re.search(r"\btotal\b", ln.text, re.IGNORECASE):
+            continue
+        if re.search(
+            r"grand|bill\s*total|invoice\s*total|total\s*amount|chargeable|"
+            r"before\s*tax|amount\s*payable|net\s*amount|"
+            r"\b(kgs?|nos|pcs|units?|bundles?|unt)\b|"
+            r"\bcgst\b|\bsgst\b|\bigst\b|t[ae]x\s*amount|hsn\s*/?\s*sac|"
+            r"in\s*words|e-?way",
+            ln.text, re.IGNORECASE,
+        ):
+            continue
+        # Skip HSN tax-summary totals like "Total 641.20 57.71 57.71 115.42"
+        nums = amounts_in(ln.text) + _whole_amounts(ln.text, min_val=1.0)
+        if len(nums) >= 3:
+            continue
+        amt = _amount_on_line(ln)
+        if amt is not None and amt > 0:
+            return amt
     return None
+
+
+def _synthesize_tax_lines(
+    lines: List[Line],
+    base: Optional[float],
+    total: Optional[float],
+    tax_labeled: Optional[float],
+    round_off: float,
+) -> List[TaxLine]:
+    """Build CGST/SGST or IGST rows when OCR has Tax Amount but no labeled % rows."""
+    tax_amt = tax_labeled
+    if tax_amt is None and base is not None and total is not None:
+        gap = round(total - base - (round_off or 0.0), 2)
+        if gap > 0:
+            tax_amt = gap
+    if not tax_amt or tax_amt <= 0:
+        return []
+
+    blob = " ".join(ln.text for ln in lines[-40:])  # totals area
+    has_cgst = bool(re.search(r"\bCGST\b", blob, re.IGNORECASE))
+    has_sgst = bool(re.search(r"\bSGST\b", blob, re.IGNORECASE))
+    has_igst = bool(re.search(r"\bIGST\b", blob, re.IGNORECASE))
+
+    # Infer rate from base if possible
+    rate = None
+    if base and base > 0:
+        pct = round(100.0 * tax_amt / base, 2)
+        for candidate in (5, 12, 18, 28, 40):
+            if abs(pct - candidate) <= 0.6:
+                rate = float(candidate)
+                break
+        if rate is None and abs(pct - 18) < 2.5:
+            rate = 18.0
+
+    if rate is None:
+        # Look for an explicit 18%/9% near tax labels
+        m = re.search(r"(\d{1,2}(?:\.\d+)?)\s*%", blob)
+        if m:
+            r = float(m.group(1))
+            if 0 < r <= 28:
+                rate = r
+    if rate is None:
+        rate = 18.0
+
+    base_val = round(base, 2) if base else round(tax_amt * 100.0 / rate, 2)
+
+    # Intra-state: CGST+SGST headers (or no IGST) → split half at rate/2
+    if (has_cgst and has_sgst) or (has_cgst and not has_igst):
+        half_rate = round(rate / 2.0, 2)
+        half_amt = round(tax_amt / 2.0, 2)
+        other = round(tax_amt - half_amt, 2)
+        return [
+            TaxLine(kind="CGST", rate=half_rate, base=base_val, amount=half_amt),
+            TaxLine(kind="SGST", rate=half_rate, base=base_val, amount=other),
+        ]
+
+    return [TaxLine(kind="IGST", rate=rate, base=base_val, amount=round(tax_amt, 2))]
 
 
 def _clean_tax_kind(raw: str) -> str:
@@ -913,16 +1538,20 @@ def extract_totals_and_tax(pages: List[Page], result: InvoiceResult) -> None:
     base = _find_subtotal(lines)
     if base is None:
         base = find_anchor_amount(BASE_ANCHORS)
-    if result.line_items:
+    # Fill missing base from line items only — never override a labeled subtotal
+    # (bad OCR totals on rows used to replace Sub Total / Taxable Amount).
+    if base is None and result.line_items:
         item_sum = sum(it.total for it in result.line_items)
-        if item_sum > 0 and (
-            base is None or abs(item_sum - base) / item_sum > 0.05
-        ):
+        if item_sum > 0:
             base = item_sum
     base_anchored = base is not None
 
     total = find_anchor_amount(TOTAL_ANCHORS, min_value=(base or 0.0) * 0.5)
     total_anchored = total is not None
+
+    tax_labeled = find_anchor_amount(
+        [r"total\s*tax", r"tax\s*amount", r"gst\s*amount", r"total\s*gst"],
+    )
 
     # Explicit Round Off early so tax inference can use it
     early_round_off = _extract_round_off(lines) or 0.0
@@ -1009,8 +1638,12 @@ def extract_totals_and_tax(pages: List[Page], result: InvoiceResult) -> None:
         tax_lines = _extract_label_tax_lines(lines)
     if not tax_lines:
         tax_lines = _extract_hsn_tax_lines(lines)
+    if not tax_lines:
+        tax_lines = _synthesize_tax_lines(lines, base, total, tax_labeled, early_round_off)
     _infer_missing_tax_kinds(tax_lines)
     tax_sum = round(sum(t.amount for t in tax_lines), 2)
+    if (not tax_sum) and tax_labeled:
+        tax_sum = round(tax_labeled, 2)
 
     # Prefer explicit Round Off label; else infer when gap is paisa-scale (≤ ₹1)
     round_off = early_round_off if early_round_off else None
