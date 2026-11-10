@@ -1133,6 +1133,95 @@ def _extract_line_items_from_page(
     return items
 
 
+# Handling / packing / freight rows — treat as qty 1 × rate = amount
+CHARGE_LABEL_RE = re.compile(
+    r"(?i)\b(?:"
+    r"handling\s*charges?"
+    r"|pack(?:ing|aging)(?:\s*&\s*forwarding)?\s*charges?"
+    r"|packing\s*&\s*forwarding"
+    r"|forwarding\s*charges?"
+    r"|freight(?:\s*charges?)?"
+    r"|cartage(?:\s*charges?)?"
+    r"|other\s*charges?"
+    r")\b"
+)
+
+_CHARGE_STOP_RE = re.compile(
+    r"(?i)\b(?:cgst|sgst|igst|utgst|taxable|grand\s*total|bill\s*total|"
+    r"invoice\s*total|total\s*tax|tax\s*amount|round\s*off|"
+    r"amount\s*chargeable|amount\s*payable|in\s*words)\b"
+)
+
+
+def _is_charge_description(text: str) -> bool:
+    return bool(CHARGE_LABEL_RE.search(text or ""))
+
+
+def _normalize_charge_item(it: LineItem) -> LineItem:
+    """Force charge rows to qty=1, rate=amount so ERP review accepts them."""
+    amount = float(it.total or 0) or float(it.unit_price or 0)
+    if amount <= 0:
+        return it
+    it.quantity = 1.0
+    it.unit_price = round(amount, 2)
+    it.total = round(amount, 2)
+    return it
+
+
+def _charge_key(desc: str) -> str:
+    return re.sub(r"\s+", " ", (desc or "").strip().lower())
+
+
+def _extract_charge_items_from_lines(lines: List[Line]) -> List[LineItem]:
+    """Find Handling/Packing/Freight charge rows after the item table."""
+    out: List[LineItem] = []
+    for ln in lines:
+        # Stop at tax / grand-total section (do not stop on the charge line itself)
+        if (
+            not _is_charge_description(ln.text)
+            and _CHARGE_STOP_RE.search(ln.text)
+        ):
+            break
+        if not _is_charge_description(ln.text):
+            continue
+        nums = cell_numbers(ln.text) + amounts_in(ln.text)
+        # Prefer the rightmost money-like amount; skip GST-looking percents
+        money = [
+            n for n in nums
+            if n > 0 and not any(abs(n - g) < 0.05 for g in (5.0, 9.0, 12.0, 18.0, 28.0))
+        ]
+        if money:
+            amount = money[-1]
+        elif any(n > 0 for n in nums):
+            amount = max(n for n in nums if n > 0)
+        else:
+            amount = 0.0
+        if amount <= 0:
+            continue
+        label = CHARGE_LABEL_RE.search(ln.text)
+        desc = label.group(0).strip() if label else ln.text.strip()
+        desc = re.sub(r"\s+", " ", desc)
+        low = desc.lower()
+        if "handling" in low:
+            desc = "Handling Charges"
+        elif "packing" in low and "forward" in low:
+            desc = "Packing & Forwarding Charges"
+        elif re.search(r"pack(?:ing|aging)\s*charges?", low):
+            desc = "Packaging Charges"
+        elif "freight" in low:
+            desc = "Freight"
+        elif "cartage" in low:
+            desc = "Cartage"
+        elif "forwarding" in low:
+            desc = "Forwarding Charges"
+        elif "other" in low:
+            desc = "Other Charges"
+        out.append(_normalize_charge_item(LineItem(
+            description=desc, quantity=1.0, unit_price=amount, total=amount,
+        )))
+    return out
+
+
 def _is_junk_line_item(it: LineItem) -> bool:
     desc = (it.description or "").strip()
     if not desc and not it.total:
@@ -1171,6 +1260,8 @@ def extract_line_items(pages: List[Page], result: InvoiceResult) -> None:
 
     items: List[LineItem] = []
     col_x: Optional[dict] = None
+    last_header_idx: Optional[int] = None
+    last_page_for_header: Optional[Page] = None
 
     for page_i, page in enumerate(pages):
         lines = page.lines
@@ -1178,6 +1269,8 @@ def extract_line_items(pages: List[Page], result: InvoiceResult) -> None:
         if header is not None:
             col_x = {c: w.cx for c, w in header.items()}
             start_idx = header_idx + 1
+            last_header_idx = header_idx
+            last_page_for_header = page
         elif col_x is not None and page_i > 0:
             # Continuation page with no repeated header — keep prior column map
             start_idx = 0
@@ -1191,7 +1284,27 @@ def extract_line_items(pages: List[Page], result: InvoiceResult) -> None:
         it.description = _clean_item_description(it.description)
         if _is_junk_line_item(it):
             continue
+        if _is_charge_description(it.description):
+            it = _normalize_charge_item(it)
         cleaned.append(it)
+
+    # Post-pass: packing/handling/freight often sit after the item grid
+    existing = {_charge_key(it.description) for it in cleaned}
+    scan_lines: List[Line] = []
+    if last_page_for_header is not None and last_header_idx is not None:
+        scan_lines = last_page_for_header.lines[last_header_idx + 1:]
+    else:
+        scan_lines = _all_lines(pages)
+    for ch in _extract_charge_items_from_lines(scan_lines):
+        key = _charge_key(ch.description)
+        if key in existing:
+            continue
+        # Also skip if a cleaned table row already covers the same charge loosely
+        if any(key in e or e in key for e in existing):
+            continue
+        cleaned.append(ch)
+        existing.add(key)
+
     result.line_items = cleaned
 
 
