@@ -1803,7 +1803,7 @@ def extract_totals_and_tax(pages: List[Page], result: InvoiceResult) -> None:
 # ---------------------------------------------------------------- pipeline
 
 def extract_all(pages: List[Page]) -> InvoiceResult:
-    result = InvoiceResult()
+    result = InvoiceResult(document_type="paper_gst")
     if not pages:
         result.warnings.append("no pages found")
         return result

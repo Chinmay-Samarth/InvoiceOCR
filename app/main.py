@@ -24,6 +24,11 @@ from .config import (
 from .extractors import extract_all
 from .models import InvoiceResult
 from .ocr_engine import SUPPORTED_IMAGE_EXT, get_ocr, ocr_file
+from .thermal_extractors import (
+    DOC_PAPER,
+    classify_document,
+    extract_thermal,
+)
 
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 
@@ -57,7 +62,13 @@ def _parse_bytes(contents: bytes, ext: str) -> InvoiceResult:
             tmp.write(contents)
             tmp_path = tmp.name
         pages = ocr_file(tmp_path)
-        return extract_all(pages)
+        doc_type = classify_document(pages)
+        if doc_type == DOC_PAPER:
+            result = extract_all(pages)
+            result.document_type = DOC_PAPER
+        else:
+            result = extract_thermal(pages, doc_type)
+        return result
     finally:
         if tmp_path and os.path.exists(tmp_path):
             os.unlink(tmp_path)

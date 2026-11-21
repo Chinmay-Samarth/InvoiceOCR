@@ -168,6 +168,47 @@ def _limit_image_size(img: np.ndarray, max_side: int) -> np.ndarray:
     )
 
 
+def _looks_like_thermal_image(img: np.ndarray) -> bool:
+    """Tall/narrow slip (or ribbon on a wide scan) — candidate for thermal preprocess."""
+    h, w = img.shape[:2]
+    if w <= 0:
+        return False
+    aspect = h / float(w)
+    if aspect >= 1.6 or w < 900:
+        return True
+    return False
+
+
+def _crop_side_margins(img: np.ndarray, pad: int = 12) -> np.ndarray:
+    """Crop empty left/right margins when content is a centered thermal ribbon."""
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img.ndim == 3 else img
+    # Ink is darker than paper
+    _, bw = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    cols = np.where(bw.sum(axis=0) > (bw.shape[0] * 0.01))[0]
+    if cols.size < 10:
+        return img
+    x0 = max(int(cols[0]) - pad, 0)
+    x1 = min(int(cols[-1]) + pad, img.shape[1])
+    band = x1 - x0
+    # Only crop when the content is a clear ribbon (< 70% of page width)
+    if band < img.shape[1] * 0.70 and band > 80:
+        return img[:, x0:x1]
+    return img
+
+
+def _preprocess_thermal(img: np.ndarray) -> np.ndarray:
+    """Light contrast boost for faded thermal ink — paper path untouched."""
+    img = _crop_side_margins(img)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    try:
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        gray = clahe.apply(gray)
+    except Exception:
+        gray = cv2.equalizeHist(gray)
+    # Keep 3-channel BGR for PaddleOCR
+    return cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+
+
 def _group_lines(words: List[Word]) -> List[Line]:
     """Group word boxes into visual lines by vertical-center proximity."""
     if not words:
@@ -211,7 +252,14 @@ def ocr_file(
     pages: List[Page] = []
     try:
         for idx, img in enumerate(images):
-            img = _limit_image_size(img, max_side)
+            thermal_like = _looks_like_thermal_image(img)
+            if thermal_like:
+                img = _preprocess_thermal(img)
+                # Tall slips: allow a slightly larger long side so small text stays readable
+                side = max(max_side, 2800) if max_side > 0 else max_side
+            else:
+                side = max_side
+            img = _limit_image_size(img, side)
             result = ocr.ocr(img, cls=OCR_USE_ANGLE_CLS)
             words: List[Word] = []
             if result and result[0]:

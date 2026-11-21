@@ -56,6 +56,8 @@ class InvoiceResult(BaseModel):
     totals: Totals = Totals()
     line_items: List[LineItem] = []
     tax_lines: List[TaxLine] = []
+    # paper_gst | thermal_fuel | thermal_restaurant | thermal_utility | thermal_generic
+    document_type: str = "paper_gst"
     # Extraction metadata (useful for the ERP to decide on manual review)
     ocr_confidence: Optional[float] = None
     warnings: List[str] = []
